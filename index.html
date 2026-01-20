@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魔法漢字拼圖 (多人連線版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@600&family=Nunito:wght@700&display=swap');
+
+        :root {
+            --wood-color: #e6c89c;
+            --wood-border: #c19a6b;
+            --felt-color: #3e6e45;
+        }
+
+        body {
+            font-family: "Nunito", "Noto Serif TC", sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #cbebff 100%);
+        }
+
+        .font-kai {
+            font-family: "KaiTi", "BiauKai", "DFKai-SB", "TW-Kai", "Ma Shan Zheng", serif;
+        }
+
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* --- 拼圖碎片樣式 --- */
+        .puzzle-piece {
+            width: 100px;
+            height: 100px;
+            overflow: hidden;
+            position: relative;
+            background-color: #fffbf0;
+            cursor: grab;
+            touch-action: none;
+            box-shadow: 2px 3px 6px rgba(0,0,0,0.2);
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s;
+            border-radius: 6px;
+            z-index: 20;
+            border: 1px solid #e5d5b0;
+        }
+
+        .puzzle-piece:active {
+            cursor: grabbing;
+            transform: scale(1.1) rotate(2deg);
+            box-shadow: 5px 8px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .puzzle-piece.selected {
+            border: 3px solid #f87171;
+            transform: scale(1.1);
+            box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.3);
+            z-index: 100;
+        }
+
+        /* 碎片文字 */
+        .puzzle-text {
+            position: absolute;
+            font-size: 180px;
+            line-height: 200px;
+            width: 200px;
+            height: 200px;
+            color: #2d3748;
+            pointer-events: none;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .pos-0 .puzzle-text { top: 0; left: 0; }
+        .pos-1 .puzzle-text { top: 0; left: -100px; }
+        .pos-2 .puzzle-text { top: -100px; left: 0; }
+        .pos-3 .puzzle-text { top: -100px; left: -100px; }
+
+        /* --- 田字格樣式 --- */
+        .tian-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 0; 
+            background-color: #fff;
+            border: 3px solid #e11d48;
+            width: 206px;
+            height: 206px;
+            position: relative;
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .grid-hint-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 180px; 
+            color: #e2e8f0; 
+            pointer-events: none;
+            font-weight: bold;
+            z-index: 5;
+        }
+
+        .tian-grid::before {
+            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 1px;
+            border-top: 2px dashed #fda4af; pointer-events: none; z-index: 1;
+        }
+        .tian-grid::after {
+            content: ''; position: absolute; left: 50%; top: 0; height: 100%; width: 1px;
+            border-left: 2px dashed #fda4af; pointer-events: none; z-index: 1;
+        }
+
+        .drop-zone {
+            width: 100px;
+            height: 100px;
+            background-color: transparent; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .drop-zone.highlight {
+            background-color: rgba(186, 230, 253, 0.4);
+            box-shadow: inset 0 0 0 2px #3b82f6;
+        }
+
+        .drop-zone.error-zone {
+            background-color: rgba(254, 202, 202, 0.4);
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+
+        @keyframes success-pop {
+            0% { transform: scale(1); border-color: #e11d48; }
+            50% { transform: scale(1.05); border-color: #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5); }
+            100% { transform: scale(1); border-color: #22c55e; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        }
+        .completed-grid {
+            animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            border-color: #22c55e !important;
+            z-index: 25;
+        }
+        .completed-grid::before, .completed-grid::after { opacity: 0; }
+
+        /* --- 資訊卡 --- */
+        .char-info-card {
+            margin-top: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            width: 206px;
+            border: 1px solid #e2e8f0;
+            opacity: 0;
+            transform: translateY(-15px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .char-info-card.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        /* --- 托盤 --- */
+        .tray-container {
+            background-color: #f7fafc;
+            background-image: 
+                linear-gradient(45deg, #f1f5f9 25%, transparent 25%), 
+                linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f1f5f9 75%), 
+                linear-gradient(-45deg, transparent 75%, #f1f5f9 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            border: 8px solid #cbd5e1;
+            border-radius: 20px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05), 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        /* 通用視窗樣式 (Toast, Modal) */
+        #toast {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px);
+            background-color: rgba(31, 41, 55, 0.9); color: white;
+            padding: 12px 24px; border-radius: 50px; font-weight: bold;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none; z-index: 100;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* 歡迎畫面 */
+        #startScreen {
+            transition: opacity 0.5s ease-out;
+        }
+        #startScreen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 修改名字彈出視窗 */
+        #editNameModal {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #editNameModal.show {
+            opacity: 1; pointer-events: auto;
+        }
+
+        /* 線上同學面板 */
+        .online-panel {
+            position: fixed; bottom: 20px; right: 20px; width: 200px;
+            background: white; border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15); border: 2px solid #e2e8f0;
+            overflow: hidden; z-index: 50; transition: transform 0.3s;
+        }
+        .online-panel:hover { transform: translateY(-5px); }
+        .online-header {
+            background: #3b82f6; color: white; padding: 8px 12px;
+            font-weight: bold; font-size: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .online-list {
+            max-height: 200px; overflow-y: auto; padding: 10px; background: #f8fafc;
+        }
+
+        /* RWD 調整 */
+        @media (max-width: 600px) {
+            .puzzle-piece, .drop-zone { width: 75px; height: 75px; }
+            .tian-grid { width: 156px; height: 156px; border-width: 3px; }
+            .puzzle-text { font-size: 135px; line-height: 150px; width: 150px; height: 150px; }
+            .grid-hint-text { font-size: 135px; } 
+            .char-info-card { width: 156px; padding: 8px; }
+            
+            .pos-1 .puzzle-text { left: -75px; }
+            .pos-2 .puzzle-text { top: -75px; }
+            .pos-3 .puzzle-text { top: -75px; left: -75px; }
+            
+            .tray-container { padding: 1rem !important; border-width: 4px; }
+            
+            .online-panel {
+                width: 50px; height: 50px; border-radius: 25px; bottom: 10px; right: 10px; cursor: pointer;
+            }
+            .online-panel.expanded { width: 200px; height: auto; border-radius: 15px; }
+            .online-header span { display: none; }
+            .online-panel.expanded .online-header span { display: inline; }
+            .online-list { display: none; }
+            .online-panel.expanded .online-list { display: block; }
+            .online-icon { display: block; font-size: 20px; margin: 0 auto; }
+            .online-panel.expanded .online-icon { display: none; }
+        }
+        
+        @media (min-width: 601px) { .online-icon { display: none; } }
+
+        /* --- 列印專用樣式 --- */
+        @media print {
+            @page { margin: 0.5cm; size: portrait; }
+            body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+            #startScreen, header, .controls-container, .game-container, footer, #toast, #successMessage, .online-panel, #editNameModal { display: none !important; }
+            #printable-cards { display: block !important; padding: 0; width: 100%; }
+            
+            #print-header {
+                text-align: center; margin-bottom: 15px; font-size: 24px; font-weight: bold;
+                border-bottom: 2px solid #ccc; padding-bottom: 10px; width: 100%;
+            }
+
+            .cards-wrapper {
+                display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; justify-items: center;
+            }
+
+            .print-card {
+                border: 2px solid #333; border-radius: 12px; width: 100%; padding: 10px;
+                page-break-inside: avoid; text-align: center; box-shadow: none; margin-bottom: 10px;
+            }
+
+            .print-char {
+                font-family: "KaiTi", "BiauKai", serif; font-size: 130px; line-height: 1.1;
+                border: 1px dashed #ccc; margin: 5px auto; width: 150px; height: 150px;
+                display: flex; align-items: center; justify-content: center;
+            }
+            
+            .print-py { font-size: 20px; font-weight: bold; margin-bottom: 2px; }
+            .print-zh { font-size: 20px; font-weight: bold; color: #e11d48; margin-bottom: 2px; }
+            .print-meta { font-size: 14px; margin: 5px 0; color: #555; }
+            .print-en { font-size: 16px; font-weight: bold; color: #2563eb; margin-bottom: 2px; }
+            .print-words { font-size: 14px; }
+            .print-poly { font-size: 14px; color: #666; margin-top: 2px; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 no-select text-gray-700">
+
+    <!-- 歡迎/輸入姓名畫面 -->
+    <div id="startScreen" class="fixed inset-0 bg-gradient-to-br from-blue-100 to-indigo-200 z-[9999] flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full border-4 border-white/50 backdrop-blur-sm animate-[fadeIn_0.5s_ease-out]">
+            <h1 class="text-5xl font-extrabold text-blue-600 mb-2 tracking-wide drop-shadow-sm font-kai">
+                <i class="fas fa-magic text-yellow-400 mr-2"></i>魔法漢字拼圖
+            </h1>
+            <p class="text-slate-500 text-lg mb-8 font-medium">快樂學漢字，拼出大智慧！</p>
+            
+            <div class="mb-8">
+                <label for="playerNameInput" class="block text-gray-700 font-bold mb-3 text-xl">
+                    <i class="fas fa-user-edit mr-2 text-blue-400"></i>請問你的名字是？
+                </label>
+                <input type="text" id="playerNameInput" placeholder="請輸入名字" maxlength="10"
+                       class="w-full px-6 py-4 rounded-2xl border-4 border-blue-100 bg-blue-50 focus:bg-white focus:outline-none focus:border-blue-400 text-2xl text-center font-bold text-gray-700 placeholder-blue-200 transition-all shadow-inner">
+            </div>
+            
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white text-2xl font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transform transition-all active:scale-95 flex items-center justify-center gap-3">
+                <span>開始挑戰</span> <i class="fas fa-rocket"></i>
+            </button>
+        </div>
+        <div class="mt-8 text-blue-800/60 font-medium">Design by Sophia</div>
+    </div>
+
+    <!-- 修改名字彈出視窗 (Modal) -->
+    <div id="editNameModal">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 transform scale-95 transition-transform" id="modalContent">
+            <h3 class="text-xl font-bold text-slate-700 mb-4"><i class="fas fa-pen-fancy text-blue-500 mr-2"></i>修改名字</h3>
+            <input type="text" id="editNameInput" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4" placeholder="輸入新名字">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">取消</button>
+                <button onclick="confirmEditName()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">確定修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 標題區 -->
+    <header class="text-center mb-6 px-4">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-600 mb-2 tracking-wider drop-shadow-sm">
+            <i class="fas fa-puzzle-piece mr-2 text-yellow-400"></i>魔法漢字拼圖
+        </h1>
+        <p class="text-slate-500 font-medium">動動小手，把生字拼回來！</p>
+    </header>
+
+    <!-- 線上同學面板 -->
+    <div class="online-panel" onclick="this.classList.toggle('expanded')">
+        <div class="online-header">
+            <i class="fas fa-users online-icon"></i>
+            <span><i class="fas fa-users mr-1"></i> 線上同學 (<span id="onlineCount">0</span>)</span>
+            <i class="fas fa-chevron-up text-xs"></i>
+        </div>
+        <div class="online-list" id="onlinePlayersList">
+            <div class="text-xs text-gray-400 text-center py-2">連線中...</div>
+        </div>
+    </div>
+
+    <!-- 主控制面板 -->
+    <div class="controls-container bg-white p-5 rounded-2xl shadow-xl w-full max-w-5xl mx-4 mb-8 border border-slate-100 relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-24 h-24 bg-yellow-50 rounded-full opacity-50 pointer-events-none"></div>
+
+        <div class="flex flex-col lg:flex-row justify-between items-center gap-6 relative z-10">
+            <!-- 左側：設定區 -->
+            <div class="flex flex-col md:flex-row gap-4 items-center w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-400"><i class="fas fa-book-open"></i></span>
+                    <select id="lessonSelect" onchange="handleLessonChange()" 
+                            class="bg-white border border-slate-300 text-slate-700 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-bold">
+                        <option value="">-- 自訂題目 --</option>
+                    </select>
+                </div>
+                
+                <!-- 顯示玩家名字 (可修改) -->
+                <div class="bg-blue-100 px-3 py-2 rounded-lg text-blue-700 font-bold flex items-center gap-2 cursor-pointer hover:bg-blue-200 transition-colors z-20" onclick="openEditModal()" title="點擊修改名字">
+                    <i class="fas fa-user-circle"></i> <span id="displayPlayerName">玩家</span> <i class="fas fa-pen text-xs opacity-50"></i>
+                </div>
+
+                <input type="text" id="inputChars" value="讀書樂" maxlength="3" 
+                       class="hidden border border-slate-300 rounded px-2 py-1 text-center w-20 font-kai focus:outline-none focus:ring-2 ring-blue-200">
+            </div>
+
+            <!-- 中間：計時器 -->
+            <div id="timer" class="font-mono text-3xl font-black text-blue-500 bg-blue-50 px-6 py-2 rounded-xl shadow-inner border border-blue-100 tracking-widest min-w-[140px] text-center">
+                00:00
+            </div>
+
+            <!-- 右側：操作區 -->
+            <div class="flex gap-3 w-full lg:w-auto justify-center">
+                <button id="nextBtn" onclick="initGame()" 
+                        class="flex-1 lg:flex-none bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fas fa-random"></i> <span>重新出題</span>
+                </button>
+                
+                <div class="flex gap-2">
+                    <button onclick="speakText()" class="bg-yellow-400 hover:bg-yellow-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-yellow-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="朗讀">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button id="muteBtn" onclick="toggleMute()" class="bg-slate-400 hover:bg-slate-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-slate-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="靜音">
+                        <i class="fas fa-volume-high"></i>
+                    </button>
+                    <button onclick="printCards()" class="bg-purple-500 hover:bg-purple-600 text-white w-11 h-11 rounded-xl shadow-lg shadow-purple-500/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="列印字卡">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲主體 -->
+    <div class="game-container flex flex-col gap-10 w-full max-w-6xl px-4 items-center mb-12 flex-grow">
+        <!-- 1. 目標區 (田字格) -->
+        <div class="w-full flex flex-col items-center min-h-[300px]">
+            <div id="targets" class="flex flex-wrap gap-6 md:gap-10 justify-center items-start perspective-1000"></div>
+            <!-- 成功訊息 -->
+            <div id="successMessage" class="hidden mt-10 transform transition-all duration-500 z-50"></div>
+        </div>
+
+        <!-- 2. 碎片池 (托盤) -->
+        <div class="w-full max-w-4xl">
+            <div class="tray-container p-6 md:p-8 min-h-[220px] relative">
+                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-slate-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md border-2 border-white">
+                    <i class="fas fa-arrow-down mr-1"></i> 碎片區 <i class="fas fa-arrow-down ml-1"></i>
+                </div>
+                <div id="pool" class="flex flex-wrap gap-4 justify-center content-start pt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer class="w-full text-center py-6 text-slate-400 font-medium text-sm border-t border-slate-200 mt-auto bg-white/50 backdrop-blur-sm">
+        <p class="mb-1 text-slate-500">學華語向前走第二冊</p>
+        <p>Design by Sophia</p>
+    </footer>
+    
+    <div id="toast"><i class="fas fa-info-circle mr-2"></i><span>訊息</span></div>
+    <div id="printable-cards" class="hidden"></div>
+
+    <!-- Firebase Script (獨立區塊) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        const appIdStr = typeof __app_id !== 'undefined' ? __app_id : 'default-app';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, appId;
+        let isFirebaseReady = false;
+
+        try {
+            if (firebaseConfigStr !== '{}') {
+                const app = initializeApp(JSON.parse(firebaseConfigStr));
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = appIdStr;
+                isFirebaseReady = true;
+            }
+        } catch (e) {
+            console.warn("Firebase Init Error:", e);
+        }
+
+        window.joinGameFirebase = async function(playerName) {
+            if (!isFirebaseReady) return;
+            try {
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+                
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'online_users', user.uid);
+                await setDoc(userRef, {
+                    name: playerName,
+                    loginTime: Date.now(),
+                    avatar: Math.floor(Math.random() * 5)
+                }, { merge: true });
+
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'online_users');
+                onSnapshot(colRef, (snapshot) => {
+                    const players = [];
+                    const now = Date.now();
+                    const ONE_HOUR = 3600000;
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.name && (now - data.loginTime < ONE_HOUR)) players.push(data);
+                    });
+                    if (window.updateOnlinePlayersUI) window.updateOnlinePlayersUI(players);
+                });
+            } catch (e) { console.error(e); }
+        };
+
+        window.updatePlayerNameFirebase = async function(newName) {
+            if (!isFirebaseReady || !auth || !auth.currentUser) return;
+            try {
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'online_users', auth.currentUser.uid);
+                await setDoc(userRef, { name: newName, loginTime: Date.now() }, { merge: true });
+            } catch(e) { console.error(e); }
+        };
+    </script>
+
+    <!-- Game Logic Script (標準區塊，保證變數可存取) -->
+    <script>
+        // 資料庫與變數宣告
+        const charDatabase = {
+            "新": { zh: "ㄒㄧㄣ", py: "xīn", rad: "斤", str: 13, en: "new", words: ["新年", "新衣"] },
+            "同": { zh: "ㄊㄨㄥˊ", py: "tóng", rad: "口", str: 6, en: "same / together", words: ["同學", "同意"] },
+            "學": { zh: "ㄒㄩㄝˊ", py: "xué", rad: "子", str: 16, en: "learn / study", words: ["學生", "學校"] },
+            "自": { zh: "ㄗˋ", py: "zì", rad: "自", str: 6, en: "self", words: ["自己", "自由"] },
+            "己": { zh: "ㄐㄧˇ", py: "jǐ", rad: "己", str: 3, en: "self", words: ["自己", "知己"] },
+            "年": { zh: "ㄋㄧㄢˊ", py: "nián", rad: "干", str: 6, en: "year", words: ["過年", "年級"] },
+            "跟": { zh: "ㄍㄣ", py: "gēn", rad: "足", str: 13, en: "with / follow", words: ["跟隨", "跟著"] },
+            "比": { zh: "ㄅㄧˇ", py: "bǐ", rad: "比", str: 4, en: "compare", words: ["比較", "比賽"] },
+            "外": { zh: "ㄨㄞˋ", py: "wài", rad: "夕", str: 5, en: "outside", words: ["外面", "外國"] },
+            "公": { zh: "ㄍㄨㄥ", py: "gōng", rad: "八", str: 4, en: "grandpa (maternal)", words: ["公園", "外公"] },
+            "以": { zh: "ㄧˇ", py: "yǐ", rad: "人", str: 5, en: "by / using", words: ["以前", "所以"] },
+            "前": { zh: "ㄑㄧㄢˊ", py: "qián", rad: "刀", str: 9, en: "front / before", words: ["前面", "從前"] },
+            "工": { zh: "ㄍㄨㄥ", py: "gōng", rad: "工", str: 3, en: "work", words: ["工作", "工人"] },
+            "作": { zh: "ㄗㄨㄛˋ", py: "zuò", rad: "人", str: 7, en: "do / make", words: ["作業", "動作"] },
+            "班": { zh: "ㄅㄢ", py: "bān", rad: "玉", str: 10, en: "class / work shift", words: ["班級", "上班"] },
+            "後": { zh: "ㄏㄡˋ", py: "hòu", rad: "彳", str: 9, en: "back / after", words: ["後面", "以後"] },
+            "去": { zh: "ㄑㄩˋ", py: "qù", rad: "厶", str: 5, en: "go", words: ["去年", "下去"] },
+            "近": { zh: "ㄐㄧㄣˋ", py: "jìn", rad: "辵", str: 8, en: "near", words: ["最近", "靠近"] },
+            "買": { zh: "ㄇㄞˇ", py: "mǎi", rad: "貝", str: 12, en: "buy", words: ["買菜", "購買"] },
+            "東": { zh: "ㄉㄨㄥ", py: "dōng", rad: "木", str: 8, en: "east", words: ["東西", "東方"] },
+            "西": { zh: "ㄒㄧ", py: "xī", rad: "覀", str: 6, en: "west", words: ["西瓜", "西方"] },
+            "魚": { zh: "ㄩˊ", py: "yú", rad: "魚", str: 11, en: "fish", words: ["釣魚", "金魚"] },
+            "還": { zh: "ㄏㄞˊ", py: "hái", rad: "辵", str: 17, en: "still / also", words: ["還有", "還好"], poly: [{zh: "ㄏㄨㄢˊ", py: "huán"}] },
+            "可": { zh: "ㄎㄜˇ", py: "kě", rad: "口", str: 5, en: "can / able", words: ["可以", "可愛"] },
+            "出": { zh: "ㄔㄨ", py: "chū", rad: "凵", str: 5, en: "out", words: ["出去", "出現"] },
+            "先": { zh: "ㄒㄧㄢ", py: "xiān", rad: "儿", str: 6, en: "first", words: ["先生", "首先"] },
+            "週": { zh: "ㄓㄡ", py: "zhōu", rad: "辵", str: 12, en: "week", words: ["週末", "週記"] },
+            "末": { zh: "ㄇㄛˋ", py: "mò", rad: "木", str: 5, en: "end", words: ["期末", "年末"] },
+            "晚": { zh: "ㄨㄢˇ", py: "wǎn", rad: "日", str: 11, en: "late / night", words: ["晚上", "晚安"] },
+            "蛋": { zh: "ㄉㄢˋ", py: "dàn", rad: "虫", str: 11, en: "egg", words: ["雞蛋", "蛋糕"] },
+            "飯": { zh: "ㄈㄢˋ", py: "fàn", rad: "食", str: 12, en: "rice / meal", words: ["吃飯", "米飯"] },
+            "現": { zh: "ㄒㄧㄢˋ", py: "xiàn", rad: "玉", str: 11, en: "now", words: ["現在", "發現"] },
+            "點": { zh: "ㄉㄧㄢˇ", py: "diǎn", rad: "黑", str: 17, en: "o'clock / dot", words: ["點心", "一點"] },
+            "黃": { zh: "ㄏㄨㄤˊ", py: "huáng", rad: "黃", str: 12, en: "yellow", words: ["黃色", "金黃"] },
+            "綠": { zh: "ㄌㄩˋ", py: "lǜ", rad: "糸", str: 14, en: "green", words: ["綠色", "綠茶"] },
+            "色": { zh: "ㄙㄜˋ", py: "sè", rad: "色", str: 6, en: "color", words: ["紅色", "彩色"] },
+            "時": { zh: "ㄕˊ", py: "shí", rad: "日", str: 10, en: "time", words: ["時間", "小時"] },
+            "候": { zh: "ㄏㄡˋ", py: "hòu", rad: "人", str: 10, en: "wait / time", words: ["時候", "等候"] },
+            "花": { zh: "ㄏㄨㄚ", py: "huā", rad: "艸", str: 8, en: "flower", words: ["花朵", "開花"] },
+            "子": { zh: "˙ㄗ", py: "zi", rad: "子", str: 3, en: "child / suffix", words: ["兒子", "椅子"] },
+            "紅": { zh: "ㄏㄨㄥˊ", py: "hóng", rad: "糸", str: 9, en: "red", words: ["紅包", "紅豆"] },
+            "白": { zh: "ㄅㄞˊ", py: "bái", rad: "白", str: 5, en: "white", words: ["白色", "白天"] },
+            "華": { zh: "ㄏㄨㄚˊ", py: "huá", rad: "艸", str: 12, en: "magnificent / China", words: ["中華", "華人"] },
+            "說": { zh: "ㄕㄨㄛ", py: "shuō", rad: "言", str: 14, en: "speak", words: ["說話", "說明"] },
+            "對": { zh: "ㄉㄨㄟˋ", py: "duì", rad: "寸", str: 14, en: "correct / towards", words: ["對不起", "不對"] },
+            "星": { zh: "ㄒㄧㄥ", py: "xīng", rad: "日", str: 9, en: "star", words: ["星星", "星期"] },
+            "期": { zh: "ㄑㄧˊ", py: "qí", rad: "月", str: 12, en: "period of time", words: ["日期", "學期"] },
+            "會": { zh: "ㄏㄨㄟˋ", py: "huì", rad: "曰", str: 13, en: "can / meet", words: ["開會", "不會"] },
+            "每": { zh: "ㄇㄟˇ", py: "měi", rad: "毋", str: 7, en: "every", words: ["每天", "每年"] },
+            "給": { zh: "ㄍㄟˇ", py: "gěi", rad: "糸", str: 12, en: "give", words: ["送給", "交給"] },
+            "如": { zh: "ㄖㄨˊ", py: "rú", rad: "女", str: 6, en: "if / like", words: ["如果", "比如"] },
+            "果": { zh: "ㄍㄨㄛˇ", py: "guǒ", rad: "木", str: 8, en: "fruit / result", words: ["水果", "蘋果"] },
+            "起": { zh: "ㄑㄧˇ", py: "qǐ", rad: "走", str: 10, en: "rise / start", words: ["起床", "起來"] },
+            "累": { zh: "ㄌㄟˋ", py: "lèi", rad: "糸", str: 11, en: "tired", words: ["很累", "勞累"] },
+            "早": { zh: "ㄗㄠˇ", py: "zǎo", rad: "日", str: 6, en: "early / morning", words: ["早上", "早安"] },
+            "洗": { zh: "ㄒㄧˇ", py: "xǐ", rad: "水", str: 9, en: "wash", words: ["洗手", "洗澡"] },
+            "昨": { zh: "ㄗㄨㄛˊ", py: "zuó", rad: "日", str: 9, en: "yesterday", words: ["昨天", "昨日"] },
+            "過": { zh: "ㄍㄨㄛˋ", py: "guò", rad: "辵", str: 13, en: "pass / cross", words: ["過去", "難過"] },
+            "別": { zh: "ㄅㄧㄝˊ", py: "bié", rad: "刀", str: 7, en: "don't / separate", words: ["別人", "告別"] },
+            "忘": { zh: "ㄨㄤˋ", py: "wàng", rad: "心", str: 7, en: "forget", words: ["忘記", "難忘"] },
+            "用": { zh: "ㄩㄥˋ", py: "yòng", rad: "用", str: 5, en: "use", words: ["用心", "不用"] },
+            "臉": { zh: "ㄌㄧㄢˇ", py: "liǎn", rad: "肉", str: 17, en: "face", words: ["洗臉", "笑臉"] },
+            "送": { zh: "ㄙㄨㄥˋ", py: "sòng", rad: "辵", str: 10, en: "send / give", words: ["送禮", "歡送"] },
+            "隻": { zh: "ㄓ", py: "zhī", rad: "隹", str: 10, en: "measure word", words: ["一隻", "船隻"] },
+            "狗": { zh: "ㄍㄡˇ", py: "gǒu", rad: "犬", str: 8, en: "dog", words: ["小狗", "熱狗"] },
+            "帶": { zh: "ㄉㄞˋ", py: "dài", rad: "巾", str: 11, en: "bring / belt", words: ["帶路", "皮帶"] },
+            "散": { zh: "ㄙㄢˋ", py: "sàn", rad: "攴", str: 12, en: "scatter / loose", words: ["散步", "分散"] },
+            "步": { zh: "ㄅㄨˋ", py: "bù", rad: "止", str: 7, en: "step", words: ["跑步", "進步"] },
+            "貓": { zh: "ㄇㄠ", py: "māo", rad: "豸", str: 16, en: "cat", words: ["貓咪", "熊貓"] },
+            "非": { zh: "ㄈㄟ", py: "fēi", rad: "非", str: 8, en: "not / wrong", words: ["非常", "是非"] },
+            "愛": { zh: "ㄞˋ", py: "ài", rad: "心", str: 13, en: "love", words: ["愛心", "可愛"] },
+            "南": { zh: "ㄋㄢˊ", py: "nán", rad: "十", str: 9, en: "south", words: ["南方", "南邊"] },
+            "北": { zh: "ㄅㄟˇ", py: "běi", rad: "匕", str: 5, en: "north", words: ["北方", "台北"] },
+            "方": { zh: "ㄈㄤ", py: "fāng", rad: "方", str: 4, en: "square / direction", words: ["地方", "方便"] },
+            "裡": { zh: "ㄌㄧˇ", py: "lǐ", rad: "衣", str: 13, en: "inside", words: ["裡面", "這裡"] },
+            "校": { zh: "ㄒㄧㄠˋ", py: "xiào", rad: "木", str: 10, en: "school", words: ["學校", "校長"] },
+            "門": { zh: "ㄇㄣˊ", py: "mén", rad: "門", str: 8, en: "door", words: ["大門", "開門"] },
+            "口": { zh: "ㄎㄡˇ", py: "kǒu", rad: "口", str: 3, en: "mouth", words: ["門口", "入口"] },
+            "因": { zh: "ㄧㄣ", py: "yīn", rad: "囗", str: 6, en: "cause / because", words: ["因為", "原因"] },
+            "為": { zh: "ㄨㄟˋ", py: "wèi", rad: "爪", str: 9, en: "for / be", words: ["因為", "為了"] },
+            "所": { zh: "ㄙㄨㄛˇ", py: "suǒ", rad: "戶", str: 8, en: "place", words: ["所以", "廁所"] },
+            "本": { zh: "ㄅㄣˇ", py: "běn", rad: "木", str: 5, en: "root / book", words: ["書本", "本來"] },
+            "著": { zh: "˙ㄓㄜ", py: "zhe", rad: "艸", str: 12, en: "particle / aspect", words: ["看著", "聽著"], poly: [{zh: "ㄓㄨㄛˊ", py: "zhuó"}] },
+            "退": { zh: "ㄊㄨㄟˋ", py: "tuì", rad: "辵", str: 10, en: "retreat / return", words: ["退休", "後退"] },
+            "休": { zh: "ㄒㄧㄡ", py: "xiū", rad: "人", str: 6, en: "rest", words: ["休息", "午休"] },
+            "次": { zh: "ㄘˋ", py: "cì", rad: "欠", str: 6, en: "time / order", words: ["這次", "下次"] },
+            "旅": { zh: "ㄌㄩˇ", py: "lǚ", rad: "方", str: 10, en: "travel", words: ["旅行", "旅遊"] },
+            "行": { zh: "ㄒㄧㄥˊ", py: "xíng", rad: "行", str: 6, en: "walk / go", words: ["行李", "行人"], poly: [{zh: "ㄏㄤˊ", py: "háng"}] },
+            "法": { zh: "ㄈㄚˇ", py: "fǎ", rad: "水", str: 8, en: "law / method", words: ["法國", "辦法"] },
+            "國": { zh: "ㄍㄨㄛˊ", py: "guó", rad: "囗", str: 11, en: "country", words: ["國家", "國王"] },
+            "動": { zh: "ㄉㄨㄥˋ", py: "dòng", rad: "力", str: 11, en: "move", words: ["動物", "運動"] },
+            "物": { zh: "ㄨˋ", py: "wù", rad: "牛", str: 8, en: "thing / object", words: ["生物", "禮物"] },
+            "園": { zh: "ㄩㄢˊ", py: "yuán", rad: "囗", str: 13, en: "garden / park", words: ["公園", "花園"] },
+            "老": { zh: "ㄌㄠˇ", py: "lǎo", rad: "老", str: 6, en: "old", words: ["老師", "老人"] },
+            "希": { zh: "ㄒㄧ", py: "xī", rad: "巾", str: 7, en: "hope", words: ["希望", "希臘"] },
+            "望": { zh: "ㄨㄤˋ", py: "wàng", rad: "月", str: 11, en: "look / hope", words: ["願望", "看望"] },
+            "但": { zh: "ㄉㄢˋ", py: "dàn", rad: "人", str: 7, en: "but", words: ["但是", "不但"] },
+            "胖": { zh: "ㄆㄤˋ", py: "pàng", rad: "肉", str: 9, en: "fat", words: ["胖子", "肥胖"] },
+            "真": { zh: "ㄓㄣ", py: "zhēn", rad: "目", str: 10, en: "real / true", words: ["真的", "真心"] },
+            "長": { zh: "ㄔㄤˊ", py: "cháng", rad: "長", str: 8, en: "long / grow", words: ["很長", "長度"], poly: [{zh: "ㄓㄤˇ", py: "zhǎng"}] },
+            "久": { zh: "ㄐㄧㄡˇ", py: "jiǔ", rad: "丿", str: 3, en: "long time", words: ["好久", "多久"] },
+            "話": { zh: "ㄏㄨㄚˋ", py: "huà", rad: "言", str: 13, en: "word / speech", words: ["說話", "電話"] },
+            "高": { zh: "ㄍㄠ", py: "gāo", rad: "高", str: 10, en: "high / tall", words: ["高興", "蛋糕"] },
+            "課": { zh: "ㄎㄜˋ", py: "kè", rad: "言", str: 15, en: "lesson / class", words: ["上課", "課本"] },
+            "寫": { zh: "ㄒㄧㄝˇ", py: "xiě", rad: "宀", str: 15, en: "write", words: ["寫字", "寫信"] },
+            "沒": { zh: "ㄇㄟˊ", py: "méi", rad: "水", str: 7, en: "have not", words: ["沒有", "沒空"], poly: [{zh: "ㄇㄛˋ", py: "mò"}] },
+            "題": { zh: "ㄊㄧˊ", py: "tí", rad: "頁", str: 18, en: "topic / problem", words: ["問題", "題目"] },
+            "定": { zh: "ㄉㄧㄥˋ", py: "dìng", rad: "宀", str: 8, en: "decide / fix", words: ["決定", "一定"] },
+            "意": { zh: "ㄧˋ", py: "yì", rad: "心", str: 13, en: "meaning / idea", words: ["意思", "願意"] },
+            "思": { zh: "ㄙ", py: "sī", rad: "心", str: 9, en: "think", words: ["思考", "意思"] },
+            "讀": { zh: "ㄉㄨˊ", py: "dú", rad: "言", str: 22, en: "read", words: ["讀書", "閱讀"] },
+            "書": { zh: "ㄕㄨ", py: "shū", rad: "曰", str: 10, en: "book", words: ["看書", "書包"] },
+            "樂": { zh: "ㄌㄜˋ", py: "lè", rad: "木", str: 15, en: "happy", words: ["快樂", "音樂"], poly: [{zh: "ㄩㄝˋ", py: "yuè"}] }
+        };
+
+        const lessons = {
+            1: "新同學自己年跟比",
+            2: "外公以前工作班後",
+            3: "去近買東西魚還可",
+            4: "出先週末晚蛋飯現點",
+            5: "黃綠色時候花子紅白",
+            6: "華說對星期會每給如果",
+            7: "起累早洗昨過別忘用臉",
+            8: "送隻狗帶散步貓非愛",
+            9: "南北方裡校門口因為所",
+            10: "本著退休次旅行法國",
+            11: "動物園老希望但胖真長",
+            12: "久話高課寫沒題定意思"
+        };
+
+        const SoundManager = {
+            ctx: null, isMuted: false,
+            init: function() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+            playTone: function(freq, type, duration, startTime = 0) {
+                if (this.isMuted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime + startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + startTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(this.ctx.currentTime + startTime);
+                osc.stop(this.ctx.currentTime + startTime + duration);
+            },
+            playClick: function() { this.playTone(600, 'sine', 0.1); },
+            playError: function() { this.playTone(150, 'sawtooth', 0.1); this.playTone(100, 'sawtooth', 0.1, 0.05); },
+            playCorrect: function() { this.playTone(800, 'sine', 0.1); this.playTone(1200, 'sine', 0.2, 0.1); },
+            playWin: function() { [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => this.playTone(freq, 'square', 0.3, i * 0.1)); }
+        };
+
+        let isMuted = false;
+        function toggleMute() {
+            isMuted = !isMuted;
+            SoundManager.isMuted = isMuted;
+            const btn = document.getElementById('muteBtn');
+            const icon = btn.querySelector('i');
+            if (isMuted) {
+                btn.classList.replace('bg-slate-400', 'bg-red-400');
+                btn.classList.replace('hover:bg-slate-500', 'hover:bg-red-500');
+                icon.className = 'fas fa-volume-mute';
+            } else {
+                btn.classList.replace('bg-red-400', 'bg-slate-400');
+                btn.classList.replace('hover:bg-red-500', 'hover:bg-slate-500');
+                icon.className = 'fas fa-volume-high';
+            }
+        }
+
+        const inputEl = document.getElementById('inputChars');
+        const lessonSelect = document.getElementById('lessonSelect');
+        const poolEl = document.getElementById('pool');
+        const targetsEl = document.getElementById('targets');
+        const successMsg = document.getElementById('successMessage');
+        const timerEl = document.getElementById('timer');
+        const nextBtn = document.getElementById('nextBtn');
+        const toast = document.getElementById('toast');
+        const printableCards = document.getElementById('printable-cards');
+        const displayPlayerName = document.getElementById('displayPlayerName');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const startScreen = document.getElementById('startScreen');
+        const editNameModal = document.getElementById('editNameModal');
+        const editNameInput = document.getElementById('editNameInput');
+        const modalContent = document.getElementById('modalContent');
+        
+        let pieces = [];
+        let selectedPiece = null;
+        let draggedPiece = null;
+        let timerInterval;
+        let seconds = 0;
+        let remainingChars = [];
+        let playerName = "小小探險家";
+        let preferredVoice = null;
+
+        function initLessonSelect() {
+            for (let i = 1; i <= 12; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = `第 ${i} 課`;
+                lessonSelect.appendChild(option);
+            }
+        }
+
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            preferredVoice = voices.find(v => v.lang === 'zh-TW' && v.name.includes('Google')) ||
+                             voices.find(v => v.lang === 'zh-TW') ||
+                             voices.find(v => v.name.includes('Taiwan'));
+            if (preferredVoice) console.log("Voice loaded:", preferredVoice.name);
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // --- 模態框操作 ---
+        function openEditModal() {
+            editNameInput.value = playerName;
+            editNameModal.classList.add('show');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+            editNameInput.focus();
+        }
+
+        function closeEditModal() {
+            editNameModal.classList.remove('show');
+            modalContent.classList.add('scale-95');
+            modalContent.classList.remove('scale-100');
+        }
+
+        function confirmEditName() {
+            const newName = editNameInput.value.trim();
+            if (newName) {
+                playerName = newName;
+                displayPlayerName.textContent = playerName;
+                if (typeof window.updatePlayerNameFirebase === 'function') {
+                    window.updatePlayerNameFirebase(playerName);
+                }
+            }
+            closeEditModal();
+        }
+
+        // 點擊背景關閉
+        editNameModal.addEventListener('click', (e) => {
+            if (e.target === editNameModal) closeEditModal();
+        });
+
+        // 遊戲流程
+        function startGame() {
+            const name = playerNameInput.value.trim();
+            if (name) {
+                playerName = name;
+            }
+            displayPlayerName.textContent = playerName;
+            
+            if (typeof window.joinGameFirebase === 'function') {
+                window.joinGameFirebase(playerName);
+            }
+
+            startScreen.classList.add('fade-out');
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+            }, 500);
+
+            initGame();
+            loadVoices();
+        }
+
+        function handleLessonChange() {
+            const selectedLesson = lessonSelect.value;
+            const inputEl = document.getElementById('inputChars');
+
+            if (selectedLesson && lessons[selectedLesson]) {
+                inputEl.classList.add('hidden');
+                remainingChars = lessons[selectedLesson].split('');
+                shuffleArray(remainingChars);
+                showToast(`已切換至第 ${selectedLesson} 課`);
+            } else {
+                inputEl.classList.remove('hidden');
+                remainingChars = [];
+            }
+            initGame();
+        }
+
+        function showToast(msg) {
+            toast.querySelector('span').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function setDifficulty(mode) {
+            // 已簡化，保留介面相容性但不做任何事，預設為簡單模式
+        }
+
+        function initGame(options = {}) {
+            const { nextBatch = false } = options;
+            SoundManager.init();
+
+            const selectedLesson = lessonSelect.value;
+            let text = "";
+
+            if (selectedLesson && lessons[selectedLesson]) {
+                if (!nextBatch) {
+                    if (remainingChars.length === 0) {
+                        remainingChars = lessons[selectedLesson].split('');
+                        shuffleArray(remainingChars);
+                    }
+                    startTimer();
+                }
+                
+                if (remainingChars.length > 0) {
+                    const chunk = remainingChars.splice(0, 3);
+                    text = chunk.join('');
+                    inputEl.value = text;
+                } else {
+                    remainingChars = lessons[selectedLesson].split('');
+                    shuffleArray(remainingChars);
+                    text = remainingChars.splice(0, 3).join('');
+                    inputEl.value = text;
+                }
+                nextBtn.innerHTML = `<i class="fas fa-random"></i> <span>重新出題 (剩 ${remainingChars.length} 字)</span>`;
+            } else {
+                text = inputEl.value.trim();
+                if (text.length === 0) text = "讀書樂";
+                startTimer();
+                nextBtn.innerHTML = '<i class="fas fa-random"></i> <span>重新出題</span>';
+            }
+
+            if (text.length > 3) {
+                text = text.substring(0, 3);
+                inputEl.value = text;
+            }
+
+            poolEl.innerHTML = '';
+            targetsEl.innerHTML = '';
+            successMsg.classList.add('hidden');
+            successMsg.innerHTML = '';
+            pieces = [];
+            selectedPiece = null;
+
+            const chars = text.split('');
+            chars.forEach((char, index) => createGrid(char, index));
+            chars.forEach((char, charIndex) => {
+                for (let pos = 0; pos < 4; pos++) {
+                    createPiece(char, charIndex, pos);
+                }
+            });
+
+            shuffleArray(pieces);
+            pieces.forEach(p => poolEl.appendChild(p));
+        }
+
+        function updateOnlinePlayersUI(players) {
+            const listEl = document.getElementById('onlinePlayersList');
+            const countEl = document.getElementById('onlineCount');
+            if (!listEl || !countEl) return;
+
+            countEl.textContent = players.length;
+            listEl.innerHTML = '';
+            players.sort((a, b) => b.loginTime - a.loginTime);
+
+            players.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-2 mb-2 p-2 bg-white/80 rounded-lg shadow-sm animate-[fadeIn_0.3s]';
+                const colors = ['bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400'];
+                const color = colors[p.avatar % colors.length] || 'bg-blue-400';
+                
+                item.innerHTML = `
+                    <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center text-white font-bold text-xs">
+                        ${p.name.substring(0,1)}
+                    </div>
+                    <div class="text-sm font-bold text-gray-700 truncate max-w-[100px]">${p.name}</div>
+                    ${(Date.now() - p.loginTime < 10000) ? '<span class="text-xs text-green-600 font-bold bg-green-100 px-1 rounded">剛上線</span>' : ''}
+                `;
+                listEl.appendChild(item);
+            });
+        }
+        
+        // Expose update function for Firebase module to call
+        window.updateOnlinePlayersUI = updateOnlinePlayersUI;
+
+        // Print function
+        function printCards() {
+            const selectedLesson = lessonSelect.value;
+            let textToPrint = "";
+            if (selectedLesson && lessons[selectedLesson]) {
+                textToPrint = lessons[selectedLesson];
+            } else {
+                textToPrint = inputEl.value.trim();
+            }
+            if (!textToPrint) return;
+
+            printableCards.innerHTML = '';
+            
+            const header = document.createElement('div');
+            header.id = 'print-header';
+            header.textContent = `${playerName} 的生字練習卡`;
+            printableCards.appendChild(header);
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'cards-wrapper';
+
+            const chars = textToPrint.split('');
+            chars.forEach(char => {
+                const data = charDatabase[char];
+                if (!data) return;
+                
+                let polyHtml = '';
+                if (data.poly) {
+                    polyHtml = `<div class="print-poly">[破] ${data.poly.map(p => `${p.zh} ${p.py}`).join('、')}</div>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'print-card';
+                card.innerHTML = `
+                    <div class="print-py">${data.py}</div>
+                    <div class="print-zh">${data.zh}</div>
+                    <div class="print-char">${char}</div>
+                    <div class="print-meta">部首: ${data.rad} | 筆畫: ${data.str}</div>
+                    <div class="print-en">${data.en}</div>
+                    <div class="print-words">${data.words ? data.words.join('、') : ''}</div>
+                    ${polyHtml}
+                `;
+                wrapper.appendChild(card);
+            });
+            printableCards.appendChild(wrapper);
+            window.print();
+        }
+
+        // Game Core Functions
+        function startTimer() {
+            stopTimer();
+            seconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => { seconds++; updateTimerDisplay(); }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            const timeString = `${m}:${s}`;
+            timerEl.textContent = timeString;
+            return timeString;
+        }
+
+        function createGrid(char, charIndex) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col items-center group";
+            const grid = document.createElement('div');
+            grid.className = 'tian-grid';
+            grid.id = `grid-${charIndex}`;
+            grid.dataset.char = char;
+
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'grid-hint-text font-kai';
+            hintDiv.textContent = char;
+            grid.appendChild(hintDiv);
+
+            for (let i = 0; i < 4; i++) {
+                const zone = document.createElement('div');
+                zone.className = 'drop-zone';
+                zone.dataset.charIndex = charIndex;
+                zone.dataset.pos = i;
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+                zone.addEventListener('click', handleZoneClick);
+                grid.appendChild(zone);
+            }
+
+            const infoCard = document.createElement('div');
+            infoCard.className = 'char-info-card';
+            infoCard.id = `info-${charIndex}`;
+            const data = charDatabase[char];
+            if (data) {
+                const wordsHtml = data.words ? data.words.map(w => `<span class="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-md border border-blue-100 font-bold">${w}</span>`).join('') : '';
+                
+                let polyHtml = '';
+                if (data.poly) {
+                    polyHtml = `<div class="mt-1 text-xs text-slate-500 border-t border-slate-100 pt-1 flex justify-center gap-1 items-center">
+                        <span class="bg-gray-100 px-1 rounded text-gray-600 font-bold">破</span> 
+                        ${data.poly.map(p => `<span class="text-red-500">${p.zh}</span> <span class="text-gray-400">${p.py}</span>`).join(' | ')}
+                    </div>`;
+                }
+
+                infoCard.innerHTML = `
+                    <div class="text-2xl font-bold text-gray-800 font-kai mb-1">${char}</div>
+                    <div class="flex justify-center items-baseline gap-2 text-sm border-b border-gray-100 pb-2 mb-2">
+                        <span class="text-red-500 font-bold font-mono text-base">${data.zh}</span>
+                        <span class="text-gray-400 font-mono text-xs">${data.py}</span>
+                    </div>
+                    <div class="text-xs text-gray-500 flex justify-center gap-3 mb-2">
+                        <span><i class="fas fa-pen-nib mr-1 text-slate-300"></i>${data.str}劃</span>
+                        <span><i class="fas fa-cube mr-1 text-slate-300"></i>${data.rad}部</span>
+                    </div>
+                    <div class="text-sm text-blue-600 font-bold mb-2 bg-blue-50/50 py-1 rounded">${data.en}</div>
+                    ${wordsHtml ? `<div class="flex justify-center gap-1 flex-wrap">${wordsHtml}</div>` : ''}
+                    ${polyHtml}
+                `;
+            } else {
+                infoCard.innerHTML = `<div class="text-gray-400 text-sm py-2">暫無資料</div>`;
+            }
+
+            wrapper.appendChild(grid);
+            wrapper.appendChild(infoCard);
+            targetsEl.appendChild(wrapper);
+        }
+
+        function createPiece(char, charIndex, pos) {
+            const piece = document.createElement('div');
+            piece.className = `puzzle-piece pos-${pos}`;
+            piece.draggable = true;
+            piece.dataset.char = char;
+            piece.dataset.correctIndex = charIndex;
+            piece.dataset.correctPos = pos;
+            piece.id = `p-${charIndex}-${pos}`;
+
+            const span = document.createElement('div');
+            span.className = 'puzzle-text font-kai';
+            span.textContent = char;
+            piece.appendChild(span);
+
+            piece.addEventListener('dragstart', handleDragStart);
+            piece.addEventListener('dragend', handleDragEnd);
+            piece.addEventListener('click', handlePieceClick);
+
+            pieces.push(piece);
+        }
+
+        function handleDragStart(e) {
+            SoundManager.init();
+            draggedPiece = this;
+            this.style.opacity = '0.6';
+            this.style.transform = 'scale(1.05)';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.id);
+            if (selectedPiece) { selectedPiece.classList.remove('selected'); selectedPiece = null; }
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+            this.style.transform = '';
+            draggedPiece = null;
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('highlight'));
+        }
+
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; this.classList.add('highlight'); }
+        function handleDragLeave(e) { this.classList.remove('highlight'); }
+        function handleDrop(e) { e.preventDefault(); this.classList.remove('highlight'); if (draggedPiece) placePiece(draggedPiece, this); }
+
+        function handlePieceClick(e) {
+            SoundManager.init();
+            e.stopPropagation();
+            if (selectedPiece === this) {
+                this.classList.remove('selected'); selectedPiece = null;
+            } else {
+                if (selectedPiece) selectedPiece.classList.remove('selected');
+                this.classList.add('selected'); selectedPiece = this;
+                SoundManager.playTone(400, 'sine', 0.05);
+            }
+        }
+
+        function handleZoneClick(e) {
+            if (selectedPiece) {
+                placePiece(selectedPiece, this); selectedPiece.classList.remove('selected'); selectedPiece = null;
+            } else {
+                const pieceInside = Array.from(this.children).find(c => c.classList.contains('puzzle-piece'));
+                if (pieceInside) handlePieceClick.call(pieceInside, e);
+            }
+        }
+
+        function placePiece(piece, zone) {
+            const existingPiece = Array.from(zone.children).find(c => c.classList.contains('puzzle-piece'));
+            if (existingPiece) poolEl.appendChild(existingPiece);
+            zone.appendChild(piece);
+            piece.animate([{ transform: 'scale(0.9)' }, { transform: 'scale(1)' }], { duration: 200, easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' });
+            SoundManager.playClick();
+            checkProgress();
+        }
+
+        poolEl.addEventListener('click', (e) => {
+            if (selectedPiece && (e.target === poolEl || e.target.classList.contains('tray-container'))) {
+                poolEl.appendChild(selectedPiece);
+                selectedPiece.classList.remove('selected'); selectedPiece = null;
+                SoundManager.playClick();
+                checkProgress();
+            }
+        });
+
+        function checkProgress() {
+            let totalCorrect = 0;
+            let totalPieces = pieces.length;
+            let isErrorFound = false;
+
+            document.querySelectorAll('.tian-grid').forEach((grid) => {
+                const zones = grid.querySelectorAll('.drop-zone');
+                let gridCorrectCount = 0;
+                zones.forEach(zone => {
+                    zone.classList.remove('error-zone');
+                    const piece = Array.from(zone.children).find(c => c.classList.contains('puzzle-piece'));
+                    if (!piece) return;
+                    if (piece.dataset.correctIndex === zone.dataset.charIndex && piece.dataset.correctPos === zone.dataset.pos) {
+                        gridCorrectCount++; totalCorrect++;
+                    } else {
+                        zone.classList.add('error-zone'); isErrorFound = true;
+                    }
+                });
+                const charIndex = zones[0].dataset.charIndex;
+                const infoCard = document.getElementById(`info-${charIndex}`);
+                if (gridCorrectCount === 4) {
+                    if (!grid.classList.contains('completed-grid')) {
+                        grid.classList.add('completed-grid');
+                        SoundManager.playCorrect();
+                        setTimeout(() => speakText(grid.dataset.char), 200);
+                        if (infoCard) infoCard.classList.add('show');
+                    }
+                } else {
+                    grid.classList.remove('completed-grid');
+                    if (infoCard) infoCard.classList.remove('show');
+                }
+            });
+
+            if (isErrorFound) SoundManager.playError();
+
+            if (totalCorrect === totalPieces) {
+                const selectedLesson = lessonSelect.value;
+                if (selectedLesson && lessons[selectedLesson] && remainingChars.length > 0) {
+                    SoundManager.playCorrect();
+                    showToast(`太棒了！準備下一組... (還剩 ${remainingChars.length} 字)`);
+                    setTimeout(() => initGame({ nextBatch: true }), 1500);
+                } else {
+                    successMsg.innerHTML = `
+                        <div class="bg-gradient-to-r from-green-400 to-emerald-500 text-white p-1 rounded-3xl shadow-2xl animate-bounce">
+                            <div class="bg-white text-gray-800 px-10 py-6 rounded-2xl flex flex-col items-center gap-2 border-4 border-green-200">
+                                <div class="text-3xl font-extrabold text-green-600 mb-2">🎉 挑戰成功！ 🎉</div>
+                                <div class="text-xl font-bold text-gray-600">太棒了，<span class="text-blue-600 text-2xl">${playerName}</span>！</div>
+                                <div class="text-lg bg-yellow-100 px-4 py-1 rounded-full text-yellow-700 font-bold mt-2">
+                                    <i class="fas fa-stopwatch mr-1"></i> 總耗時：${updateTimerDisplay()}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    successMsg.classList.remove('hidden');
+                    triggerConfetti();
+                    stopTimer();
+                    setTimeout(() => SoundManager.playWin(), 800);
+                }
+            } else {
+                successMsg.classList.add('hidden');
+            }
+        }
+
+        function speakText(textToSpeak) {
+            const text = (typeof textToSpeak === 'string' && textToSpeak) ? textToSpeak : inputEl.value;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (preferredVoice) utterance.voice = preferredVoice;
+                utterance.lang = 'zh-TW';
+                utterance.rate = 0.8;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function triggerConfetti() {
+            var duration = 3000; var animationEnd = Date.now() + duration;
+            var interval = setInterval(function() {
+                if (Date.now() > animationEnd) return clearInterval(interval);
+                confetti({ particleCount: 100, startVelocity: 30, spread: 360, ticks: 60, origin: { x: Math.random(), y: Math.random() * 0.5 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'] });
+            }, 400);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        initLessonSelect();
+    </script>
+</body>
+</html>
