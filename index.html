@@ -782,6 +782,7 @@
                 btn.classList.replace('bg-slate-400', 'bg-red-400');
                 btn.classList.replace('hover:bg-slate-500', 'hover:bg-red-500');
                 icon.className = 'fas fa-volume-xmark';
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // 靜音時立即停止當前語音
             } else {
                 btn.classList.replace('bg-red-400', 'bg-slate-400');
                 btn.classList.replace('hover:bg-red-500', 'hover:bg-slate-500');
@@ -1316,6 +1317,7 @@
             let totalCorrect = 0;
             let totalPieces = pieces.length;
             let isErrorFound = false;
+            let newlyCompletedText = null;
 
             document.querySelectorAll('.tian-grid').forEach((grid) => {
                 const zones = grid.querySelectorAll('.drop-zone');
@@ -1350,7 +1352,7 @@
                             }
                         }
                         
-                        setTimeout(() => speakText(textToRead), 200);
+                        newlyCompletedText = textToRead;
                         if (infoCard) infoCard.classList.add('show');
                     }
                 } else {
@@ -1362,36 +1364,48 @@
             if (isErrorFound) SoundManager.playError();
 
             if (totalCorrect === totalPieces) {
-                if (remainingChars.length > 0) {
-                    SoundManager.playCorrect();
-                    showToast(`${t('greatJob')}${t('nextBatch')}`);
-                    setTimeout(() => initGame({ nextBatch: true }), 1500);
-                } else {
-                    successMsg.innerHTML = `
-                        <div class="bg-gradient-to-r from-green-400 to-emerald-500 text-white p-1 rounded-3xl shadow-2xl animate-bounce">
-                            <div class="bg-white text-gray-800 px-10 py-6 rounded-2xl flex flex-col items-center gap-2 border-4 border-green-200">
-                                <div class="text-3xl font-extrabold text-green-600 mb-2">🎉 ${t('success')} 🎉</div>
-                                <div class="text-xl font-bold text-gray-600">${t('greatJob')} <span class="text-blue-600 text-2xl">${playerName}</span>！</div>
-                                <div class="text-lg bg-yellow-100 px-4 py-1 rounded-full text-yellow-700 font-bold mt-2 mb-4">
-                                    <i class="fas fa-stopwatch mr-1"></i> ${t('totalTime')} ${updateTimerDisplay()}
+                const handleBatchComplete = () => {
+                    if (remainingChars.length > 0) {
+                        SoundManager.playCorrect();
+                        showToast(`${t('greatJob')}${t('nextBatch')}`);
+                        setTimeout(() => initGame({ nextBatch: true }), 1000);
+                    } else {
+                        successMsg.innerHTML = `
+                            <div class="bg-gradient-to-r from-green-400 to-emerald-500 text-white p-1 rounded-3xl shadow-2xl animate-bounce">
+                                <div class="bg-white text-gray-800 px-10 py-6 rounded-2xl flex flex-col items-center gap-2 border-4 border-green-200">
+                                    <div class="text-3xl font-extrabold text-green-600 mb-2">🎉 ${t('success')} 🎉</div>
+                                    <div class="text-xl font-bold text-gray-600">${t('greatJob')} <span class="text-blue-600 text-2xl">${playerName}</span>！</div>
+                                    <div class="text-lg bg-yellow-100 px-4 py-1 rounded-full text-yellow-700 font-bold mt-2 mb-4">
+                                        <i class="fas fa-stopwatch mr-1"></i> ${t('totalTime')} ${updateTimerDisplay()}
+                                    </div>
+                                    <button onclick="printCards()" aria-label="領取生字卡" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-2 text-xl">
+                                        <i class="fas fa-print"></i> ${t('printCards')}
+                                    </button>
                                 </div>
-                                <button onclick="printCards()" aria-label="領取生字卡" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-2 text-xl">
-                                    <i class="fas fa-print"></i> ${t('printCards')}
-                                </button>
                             </div>
-                        </div>
-                    `;
-                    successMsg.classList.remove('hidden');
-                    triggerConfetti();
-                    stopTimer();
-                    setTimeout(() => SoundManager.playWin(), 800);
+                        `;
+                        successMsg.classList.remove('hidden');
+                        triggerConfetti();
+                        stopTimer();
+                        setTimeout(() => SoundManager.playWin(), 800);
+                    }
+                };
+
+                // 等待這回合最後一個字唸完，再執行換題或顯示過關
+                if (newlyCompletedText) {
+                    setTimeout(() => speakText(newlyCompletedText, handleBatchComplete), 200);
+                } else {
+                    handleBatchComplete();
                 }
             } else {
+                if (newlyCompletedText) {
+                    setTimeout(() => speakText(newlyCompletedText), 200);
+                }
                 successMsg.classList.add('hidden');
             }
         }
 
-        function speakText(textToSpeak) {
+        function speakText(textToSpeak, onEndCallback) {
             let text = '';
             if (typeof textToSpeak === 'string' && textToSpeak) {
                 text = Array.from(textToSpeak).map(c => getDisplayChar(c)).join('');
@@ -1402,13 +1416,33 @@
                 text = currentChars.map(c => getDisplayChar(c)).join('');
             }
             
-            if ('speechSynthesis' in window) {
+            if ('speechSynthesis' in window && !isMuted) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 if (preferredVoice) utterance.voice = preferredVoice;
                 utterance.lang = currentLang === 'zh-CN' ? 'zh-CN' : 'zh-TW';
                 utterance.rate = 0.8;
+
+                let isCallbackCalled = false;
+                const handleEnd = () => {
+                    if (!isCallbackCalled) {
+                        isCallbackCalled = true;
+                        if (onEndCallback) onEndCallback();
+                    }
+                };
+
+                utterance.onend = handleEnd;
+                utterance.onerror = handleEnd;
+                
                 window.speechSynthesis.speak(utterance);
+
+                // 防呆機制：若遇到行動裝置瀏覽器語音卡住未觸發 onend，在合理時間後自動放行
+                setTimeout(handleEnd, text.length * 350 + 2000);
+            } else {
+                // 若靜音或不支援語音，短暫延遲後直接跳下一題
+                if (onEndCallback) {
+                    setTimeout(onEndCallback, 1000);
+                }
             }
         }
 
