@@ -38,6 +38,22 @@
             -webkit-user-select: none;
         }
 
+        /* --- 難易度視覺控制 --- */
+        body.diff-hard .grid-hint-text,
+        body.diff-master .grid-hint-text {
+            opacity: 0;
+        }
+        /* 過關後顯示提示字作為獎勵 */
+        body.diff-hard .completed-grid .grid-hint-text,
+        body.diff-master .completed-grid .grid-hint-text {
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        body.diff-master .tian-grid::before,
+        body.diff-master .tian-grid::after {
+            opacity: 0;
+        }
+
         /* --- 拼圖碎片樣式 --- */
         .puzzle-piece {
             width: 100px;
@@ -289,7 +305,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center py-6 no-select text-gray-700">
+<body class="min-h-screen flex flex-col items-center py-6 no-select text-gray-700 diff-normal">
 
     <!-- 語言切換 -->
     <div id="langSwitcherContainer" class="absolute top-4 right-4 z-50">
@@ -364,14 +380,27 @@
         <div class="flex flex-col lg:flex-row justify-between items-center gap-6 relative z-10">
             <!-- 左側：設定區 -->
             <div class="flex flex-col md:flex-row gap-3 items-center w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1 flex-wrap justify-center">
                     <span class="text-slate-400"><i class="fas fa-book-open"></i></span>
                     <select id="lessonSelect" onchange="handleLessonChange()" 
                             class="bg-white border border-slate-300 text-slate-700 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-bold">
                         <option value="">-- 自訂題目 --</option>
                     </select>
+
+                    <span class="text-slate-600 font-bold ml-1 md:ml-3 flex items-center gap-1 text-sm md:text-base">
+                        <i class="fas fa-layer-group text-slate-400"></i>
+                        <span data-i18n="selectDifficulty">選擇難度</span>
+                    </span>
+                    <select id="difficultySelect" onchange="handleDifficultyChange()" 
+                            class="bg-white border border-slate-300 text-slate-700 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-bold">
+                        <option value="easy" data-i18n="diffEasy">簡單 (1字)</option>
+                        <option value="normal" selected data-i18n="diffNormal">一般 (3字)</option>
+                        <option value="hard" data-i18n="diffHard">困難 (無提示)</option>
+                        <option value="master" data-i18n="diffMaster">大師 (5字)</option>
+                    </select>
+
                     <!-- 編輯自訂題目按鈕 -->
-                    <button onclick="openCustomPuzzleModal()" aria-label="編輯自訂題目" class="text-emerald-500 hover:text-emerald-700 bg-emerald-100 hover:bg-emerald-200 w-9 h-9 rounded-lg flex items-center justify-center transition" data-i18n-title="editPuzzle" title="編輯自訂題目">
+                    <button onclick="openCustomPuzzleModal()" aria-label="編輯自訂題目" class="text-emerald-500 hover:text-emerald-700 bg-emerald-100 hover:bg-emerald-200 w-9 h-9 ml-1 rounded-lg flex items-center justify-center transition" data-i18n-title="editPuzzle" title="編輯自訂題目">
                         <i class="fas fa-pen-to-square"></i>
                     </button>
                     <!-- 產生課程連結按鈕 -->
@@ -381,7 +410,7 @@
                 </div>
                 
                 <!-- 顯示玩家名字 (可修改) -->
-                <div class="bg-blue-100 px-3 py-2 rounded-lg text-blue-700 font-bold flex items-center gap-2 cursor-pointer hover:bg-blue-200 transition-colors z-20" onclick="openEditModal()" data-i18n-title="editNameTitle" title="點擊修改名字">
+                <div class="bg-blue-100 px-3 py-2 rounded-lg text-blue-700 font-bold flex items-center gap-2 cursor-pointer hover:bg-blue-200 transition-colors z-20 mt-2 md:mt-0" onclick="openEditModal()" data-i18n-title="editNameTitle" title="點擊修改名字">
                     <i class="fas fa-user-circle"></i> <span id="displayPlayerName">玩家</span> <i class="fas fa-pen text-xs opacity-50"></i>
                 </div>
             </div>
@@ -428,7 +457,7 @@
         <!-- 2. 碎片池 (托盤) -->
         <div class="w-full max-w-4xl">
             <div class="tray-container p-6 md:p-8 min-h-[220px] relative">
-                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-slate-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md border-2 border-white">
+                <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-slate-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md border-2 border-white whitespace-nowrap">
                     <i class="fas fa-arrow-down mr-1"></i> <span data-i18n="pieces">碎片區</span> <i class="fas fa-arrow-down ml-1"></i>
                 </div>
                 <div id="pool" class="flex flex-wrap gap-4 justify-center content-start pt-2"></div>
@@ -458,7 +487,6 @@
                 inputNewName: '輸入新名字',
                 cancel: '取消',
                 confirm: '確定修改',
-                online: '線上同學',
                 custom: '-- 自訂題目 --',
                 newPuzzle: '重新出題',
                 pieces: '碎片區',
@@ -472,8 +500,6 @@
                 greatJob: '太棒了，',
                 totalTime: '總耗時：',
                 printCards: '領取生字卡',
-                connecting: '連線中...',
-                justOnline: '剛上線',
                 lessonPrefix: '第 ',
                 lessonSuffix: ' 課',
                 remain: '剩',
@@ -483,7 +509,12 @@
                 customPuzzlePrompt: '請輸入你想練習的漢字：',
                 save: '儲存並開始',
                 fullscreenTitle: '全螢幕',
-                inputEmpty: '請輸入至少一個字！'
+                inputEmpty: '請輸入至少一個字！',
+                diffEasy: '簡單 (1字)',
+                diffNormal: '一般 (3字)',
+                diffHard: '困難 (無提示)',
+                diffMaster: '大師 (5字挑戰)',
+                selectDifficulty: '選擇難度'
             },
             'zh-CN': {
                 title: '魔法汉字拼图',
@@ -495,7 +526,6 @@
                 inputNewName: '输入新名字',
                 cancel: '取消',
                 confirm: '确定修改',
-                online: '线上同学',
                 custom: '-- 自订题目 --',
                 newPuzzle: '重新出题',
                 pieces: '碎片区',
@@ -509,8 +539,6 @@
                 greatJob: '太棒了，',
                 totalTime: '总耗时：',
                 printCards: '领取生字卡',
-                connecting: '连线中...',
-                justOnline: '刚上线',
                 lessonPrefix: '第 ',
                 lessonSuffix: ' 课',
                 remain: '剩',
@@ -520,7 +548,12 @@
                 customPuzzlePrompt: '请输入你想练习的汉字：',
                 save: '保存并开始',
                 fullscreenTitle: '全屏幕',
-                inputEmpty: '请输入至少一个字！'
+                inputEmpty: '请输入至少一个字！',
+                diffEasy: '简单 (1字)',
+                diffNormal: '一般 (3字)',
+                diffHard: '困难 (无提示)',
+                diffMaster: '大师 (5字挑战)',
+                selectDifficulty: '选择难度'
             },
             'en': {
                 title: 'Magic Hanzi Puzzle',
@@ -532,7 +565,6 @@
                 inputNewName: 'Enter new name',
                 cancel: 'Cancel',
                 confirm: 'Confirm',
-                online: 'Online Classmates',
                 custom: '-- Custom --',
                 newPuzzle: 'New Puzzle',
                 pieces: 'Pieces',
@@ -546,8 +578,6 @@
                 greatJob: 'Great job, ',
                 totalTime: 'Total Time: ',
                 printCards: 'Get Flashcards',
-                connecting: 'Connecting...',
-                justOnline: 'Just online',
                 lessonPrefix: 'Lesson ',
                 lessonSuffix: '',
                 remain: 'Left:',
@@ -557,7 +587,12 @@
                 customPuzzlePrompt: 'Enter Chinese characters to practice:',
                 save: 'Save & Start',
                 fullscreenTitle: 'Fullscreen',
-                inputEmpty: 'Please enter at least one character!'
+                inputEmpty: 'Please enter at least one char!',
+                diffEasy: 'Easy (1 Char)',
+                diffNormal: 'Normal (3 Chars)',
+                diffHard: 'Hard (No Hint)',
+                diffMaster: 'Master (5 Chars)',
+                selectDifficulty: 'Difficulty'
             }
         };
 
@@ -860,9 +895,13 @@
         // --- 課程連結複製功能 ---
         function copyLessonLink() {
             const lesson = document.getElementById('lessonSelect').value;
+            const diff = document.getElementById('difficultySelect').value;
             const url = new URL(window.location.href);
+            
             if (lesson) url.searchParams.set('lesson', lesson);
             else url.searchParams.delete('lesson');
+            
+            url.searchParams.set('diff', diff);
 
             const textToCopy = url.href;
             if (navigator.clipboard) {
@@ -942,6 +981,14 @@
             if (e.target === editNameModal) closeEditModal();
         });
 
+        // --- 難易度切換處理 ---
+        function handleDifficultyChange() {
+            document.body.className = document.body.className.replace(/diff-\w+/g, '').trim();
+            const diff = document.getElementById('difficultySelect').value;
+            document.body.classList.add(`diff-${diff}`);
+            handleLessonChange(); // 切換難度後重置目前關卡
+        }
+
         // --- 遊戲主流程 ---
         function startGame() {
             const name = playerNameInput.value.trim();
@@ -982,6 +1029,14 @@
             const selectedLesson = lessonSelect.value;
             let sourceText = selectedLesson && lessons[selectedLesson] ? lessons[selectedLesson] : customLessonText;
 
+            // 判斷當前難易度對應的字數
+            let chunkSize = 3;
+            const diff = document.getElementById('difficultySelect').value;
+            if (diff === 'easy') chunkSize = 1;
+            if (diff === 'normal') chunkSize = 3;
+            if (diff === 'hard') chunkSize = 3;
+            if (diff === 'master') chunkSize = 5;
+
             if (!nextBatch) {
                 remainingChars = sourceText.split('');
                 shuffleArray(remainingChars);
@@ -991,7 +1046,7 @@
                 shuffleArray(remainingChars);
             }
             
-            const chunk = remainingChars.splice(0, 3);
+            const chunk = remainingChars.splice(0, chunkSize);
             let text = chunk.join('');
 
             updateNextBtnText();
@@ -1280,7 +1335,6 @@
             if (isErrorFound) SoundManager.playError();
 
             if (totalCorrect === totalPieces) {
-                const selectedLesson = lessonSelect.value;
                 if (remainingChars.length > 0) {
                     SoundManager.playCorrect();
                     showToast(`${t('greatJob')}${t('nextBatch')}`);
@@ -1351,6 +1405,14 @@
             applyTranslations();
             const urlParams = new URLSearchParams(window.location.search);
             const l = urlParams.get('lesson');
+            const d = urlParams.get('diff');
+
+            if (d && ['easy', 'normal', 'hard', 'master'].includes(d)) {
+                document.getElementById('difficultySelect').value = d;
+                document.body.className = document.body.className.replace(/diff-\w+/g, '').trim();
+                document.body.classList.add(`diff-${d}`);
+            }
+
             if (l && lessons[l]) {
                 lessonSelect.value = l;
                 handleLessonChange();
