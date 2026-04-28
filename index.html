@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="魔法漢字拼圖 - 快樂學漢字，拼出大智慧！適合兒童的線上多語言漢字拼圖與生字練習遊戲。">
+    <meta name="keywords" content="漢字, 拼圖, 兒童教育, 中文學習, 華語教學, 生字練習, 學習遊戲">
+    <meta property="og:title" content="魔法漢字拼圖 (多人連線版)">
+    <meta property="og:description" content="動動小手，把生字拼回來！包含發音朗讀與生字卡列印功能。">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#f0f9ff">
     <title>魔法漢字拼圖 (多人連線版)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -219,7 +226,7 @@
             pointer-events: none;
         }
 
-        /* 修改名字彈出視窗 */
+        /* 彈出視窗 */
         #editNameModal {
             position: fixed; inset: 0;
             background: rgba(0,0,0,0.5);
@@ -279,8 +286,8 @@
         /* --- 列印專用樣式 --- */
         @media print {
             @page { margin: 0.5cm; size: portrait; }
-            body { background: white; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
-            #startScreen, header, .controls-container, .game-container, footer, #toast, #successMessage, .online-panel, #editNameModal { display: none !important; }
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+            #startScreen, header, .controls-container, .game-container, footer, #toast, #successMessage, .online-panel, #editNameModal, #customPuzzleModal, #langSwitcherContainer { display: none !important; }
             #printable-cards { display: block !important; padding: 0; width: 100%; }
             
             #print-header {
@@ -314,58 +321,80 @@
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 no-select text-gray-700">
 
+    <!-- 語言切換 -->
+    <div id="langSwitcherContainer" class="absolute top-4 right-4 z-50">
+        <select id="langSwitcher" onchange="changeLanguage()" class="bg-white/80 backdrop-blur-sm border border-blue-200 rounded-lg px-3 py-1 text-sm font-bold text-gray-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="zh-TW">繁體中文</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
     <!-- 歡迎/輸入姓名畫面 -->
     <div id="startScreen" class="fixed inset-0 bg-gradient-to-br from-blue-100 to-indigo-200 z-[9999] flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full border-4 border-white/50 backdrop-blur-sm animate-[fadeIn_0.5s_ease-out]">
             <h1 class="text-5xl font-extrabold text-blue-600 mb-2 tracking-wide drop-shadow-sm font-kai">
-                <i class="fas fa-magic text-yellow-400 mr-2"></i>魔法漢字拼圖
+                <i class="fas fa-magic text-yellow-400 mr-2"></i><span data-i18n="title">魔法漢字拼圖</span>
             </h1>
-            <p class="text-slate-500 text-lg mb-8 font-medium">快樂學漢字，拼出大智慧！</p>
+            <p class="text-slate-500 text-lg mb-8 font-medium" data-i18n="subtitle">快樂學漢字，拼出大智慧！</p>
             
             <div class="mb-8">
                 <label for="playerNameInput" class="block text-gray-700 font-bold mb-3 text-xl">
-                    <i class="fas fa-user-edit mr-2 text-blue-400"></i>請問你的名字是？
+                    <i class="fas fa-user-edit mr-2 text-blue-400"></i><span data-i18n="askName">請問你的名字是？</span>
                 </label>
-                <input type="text" id="playerNameInput" placeholder="請輸入名字" maxlength="10"
+                <input type="text" id="playerNameInput" data-i18n-ph="inputName" placeholder="請輸入名字" maxlength="10"
                        class="w-full px-6 py-4 rounded-2xl border-4 border-blue-100 bg-blue-50 focus:bg-white focus:outline-none focus:border-blue-400 text-2xl text-center font-bold text-gray-700 placeholder-blue-200 transition-all shadow-inner">
             </div>
             
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-yellow-400 to-orange-400 hover:from-yellow-500 hover:to-orange-500 text-white text-2xl font-bold py-4 rounded-2xl shadow-lg shadow-orange-200 transform transition-all active:scale-95 flex items-center justify-center gap-3">
-                <span>開始挑戰</span> <i class="fas fa-rocket"></i>
+                <span data-i18n="startBtn">開始挑戰</span> <i class="fas fa-rocket"></i>
             </button>
         </div>
-        <div class="mt-8 text-blue-800/60 font-medium">Design by Sophia</div>
+        <div class="mt-8 text-blue-800/60 font-medium" data-i18n="footer">Powered by Gemini | Sophia老師的AI練習本</div>
     </div>
 
     <!-- 修改名字彈出視窗 (Modal) -->
     <div id="editNameModal">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 transform scale-95 transition-transform" id="modalContent">
-            <h3 class="text-xl font-bold text-slate-700 mb-4"><i class="fas fa-pen-fancy text-blue-500 mr-2"></i>修改名字</h3>
-            <input type="text" id="editNameInput" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4" placeholder="輸入新名字">
+            <h3 class="text-xl font-bold text-slate-700 mb-4"><i class="fas fa-user-edit text-blue-500 mr-2"></i><span data-i18n="editName">修改名字</span></h3>
+            <input type="text" id="editNameInput" data-i18n-ph="inputNewName" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4" placeholder="輸入新名字">
             <div class="flex justify-end gap-2">
-                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">取消</button>
-                <button onclick="confirmEditName()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">確定修改</button>
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-i18n="cancel">取消</button>
+                <button onclick="confirmEditName()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition" data-i18n="confirm">確定修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編輯自訂題目彈出視窗 (Modal) -->
+    <div id="customPuzzleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 transform scale-95 transition-transform" id="customPuzzleModalContent">
+            <h3 class="text-xl font-bold text-slate-700 mb-4"><i class="fas fa-pen-to-square text-emerald-500 mr-2"></i><span data-i18n="editPuzzle">編輯自訂題目</span></h3>
+            <p class="text-sm text-slate-500 mb-2" data-i18n="customPuzzlePrompt">請輸入你想練習的漢字：</p>
+            <textarea id="customPuzzleInput" rows="3" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 mb-4 font-kai text-2xl resize-none text-center" placeholder="例如：春暖花開"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeCustomPuzzleModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition" data-i18n="cancel">取消</button>
+                <button onclick="saveCustomPuzzle()" class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition shadow-md shadow-emerald-500/30" data-i18n="save">儲存並開始</button>
             </div>
         </div>
     </div>
 
     <!-- 標題區 -->
-    <header class="text-center mb-6 px-4">
+    <header class="text-center mb-6 px-4 pt-4">
         <h1 class="text-3xl md:text-4xl font-extrabold text-blue-600 mb-2 tracking-wider drop-shadow-sm">
-            <i class="fas fa-puzzle-piece mr-2 text-yellow-400"></i>魔法漢字拼圖
+            <i class="fas fa-puzzle-piece mr-2 text-yellow-400"></i><span data-i18n="title">魔法漢字拼圖</span>
         </h1>
-        <p class="text-slate-500 font-medium">動動小手，把生字拼回來！</p>
+        <p class="text-slate-500 font-medium" data-i18n="subtitle">動動小手，把生字拼回來！</p>
     </header>
 
     <!-- 線上同學面板 -->
     <div class="online-panel" onclick="this.classList.toggle('expanded')">
         <div class="online-header">
             <i class="fas fa-users online-icon"></i>
-            <span><i class="fas fa-users mr-1"></i> 線上同學 (<span id="onlineCount">0</span>)</span>
+            <span><i class="fas fa-users mr-1"></i> <span data-i18n="online">線上同學</span> (<span id="onlineCount">0</span>)</span>
             <i class="fas fa-chevron-up text-xs"></i>
         </div>
         <div class="online-list" id="onlinePlayersList">
-            <div class="text-xs text-gray-400 text-center py-2">連線中...</div>
+            <div class="text-xs text-gray-400 text-center py-2" data-i18n="connecting">連線中...</div>
         </div>
     </div>
 
@@ -376,22 +405,27 @@
 
         <div class="flex flex-col lg:flex-row justify-between items-center gap-6 relative z-10">
             <!-- 左側：設定區 -->
-            <div class="flex flex-col md:flex-row gap-4 items-center w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div class="flex items-center gap-2">
+            <div class="flex flex-col md:flex-row gap-3 items-center w-full lg:w-auto bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div class="flex items-center gap-1">
                     <span class="text-slate-400"><i class="fas fa-book-open"></i></span>
                     <select id="lessonSelect" onchange="handleLessonChange()" 
                             class="bg-white border border-slate-300 text-slate-700 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-bold">
                         <option value="">-- 自訂題目 --</option>
                     </select>
+                    <!-- 編輯自訂題目按鈕 -->
+                    <button onclick="openCustomPuzzleModal()" aria-label="編輯自訂題目" class="text-emerald-500 hover:text-emerald-700 bg-emerald-100 hover:bg-emerald-200 w-9 h-9 rounded-lg flex items-center justify-center transition" data-i18n-title="editPuzzle" title="編輯自訂題目">
+                        <i class="fas fa-pen-to-square"></i>
+                    </button>
+                    <!-- 產生課程連結按鈕 -->
+                    <button onclick="copyLessonLink()" aria-label="複製課程連結" class="text-blue-500 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 w-9 h-9 rounded-lg flex items-center justify-center transition" data-i18n-title="copyLinkTitle" title="複製課程連結">
+                        <i class="fas fa-link"></i>
+                    </button>
                 </div>
                 
                 <!-- 顯示玩家名字 (可修改) -->
-                <div class="bg-blue-100 px-3 py-2 rounded-lg text-blue-700 font-bold flex items-center gap-2 cursor-pointer hover:bg-blue-200 transition-colors z-20" onclick="openEditModal()" title="點擊修改名字">
+                <div class="bg-blue-100 px-3 py-2 rounded-lg text-blue-700 font-bold flex items-center gap-2 cursor-pointer hover:bg-blue-200 transition-colors z-20" onclick="openEditModal()" data-i18n-title="editNameTitle" title="點擊修改名字">
                     <i class="fas fa-user-circle"></i> <span id="displayPlayerName">玩家</span> <i class="fas fa-pen text-xs opacity-50"></i>
                 </div>
-
-                <input type="text" id="inputChars" value="讀書樂" maxlength="3" 
-                       class="hidden border border-slate-300 rounded px-2 py-1 text-center w-20 font-kai focus:outline-none focus:ring-2 ring-blue-200">
             </div>
 
             <!-- 中間：計時器 -->
@@ -401,20 +435,23 @@
 
             <!-- 右側：操作區 -->
             <div class="flex gap-3 w-full lg:w-auto justify-center">
-                <button id="nextBtn" onclick="initGame()" 
+                <button id="nextBtn" onclick="initGame()" aria-label="重新出題"
                         class="flex-1 lg:flex-none bg-blue-500 hover:bg-blue-600 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fas fa-random"></i> <span>重新出題</span>
+                    <i class="fas fa-random"></i> <span id="nextBtnText">重新出題</span>
                 </button>
                 
                 <div class="flex gap-2">
-                    <button onclick="speakText()" class="bg-yellow-400 hover:bg-yellow-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-yellow-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="朗讀">
-                        <i class="fas fa-volume-up"></i>
+                    <!-- 全螢幕功能 -->
+                    <button id="fullscreenBtn" onclick="toggleFullscreen()" aria-label="切換全螢幕" class="bg-indigo-400 hover:bg-indigo-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-indigo-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" data-i18n-title="fullscreenTitle" title="全螢幕">
+                        <i class="fas fa-expand"></i>
                     </button>
-                    <button id="muteBtn" onclick="toggleMute()" class="bg-slate-400 hover:bg-slate-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-slate-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="靜音">
-                        <i class="fas fa-volume-high"></i>
+                    <!-- 朗讀圖示 fa-bullhorn -->
+                    <button onclick="speakText()" aria-label="朗讀發音" class="bg-yellow-400 hover:bg-yellow-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-yellow-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" data-i18n-title="ttsTitle" title="朗讀發音">
+                        <i class="fas fa-bullhorn"></i>
                     </button>
-                    <button onclick="printCards()" class="bg-purple-500 hover:bg-purple-600 text-white w-11 h-11 rounded-xl shadow-lg shadow-purple-500/30 transition transform active:scale-95 flex items-center justify-center text-lg" title="列印字卡">
-                        <i class="fas fa-print"></i>
+                    <!-- 音效圖示 fa-music -->
+                    <button id="muteBtn" onclick="toggleMute()" aria-label="切換遊戲音效" class="bg-slate-400 hover:bg-slate-500 text-white w-11 h-11 rounded-xl shadow-lg shadow-slate-400/30 transition transform active:scale-95 flex items-center justify-center text-lg" data-i18n-title="bgmTitle" title="遊戲音效">
+                        <i class="fas fa-music"></i>
                     </button>
                 </div>
             </div>
@@ -426,7 +463,7 @@
         <!-- 1. 目標區 (田字格) -->
         <div class="w-full flex flex-col items-center min-h-[300px]">
             <div id="targets" class="flex flex-wrap gap-6 md:gap-10 justify-center items-start perspective-1000"></div>
-            <!-- 成功訊息 -->
+            <!-- 成功訊息 (包含過關字卡按鈕) -->
             <div id="successMessage" class="hidden mt-10 transform transition-all duration-500 z-50"></div>
         </div>
 
@@ -434,7 +471,7 @@
         <div class="w-full max-w-4xl">
             <div class="tray-container p-6 md:p-8 min-h-[220px] relative">
                 <div class="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-slate-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md border-2 border-white">
-                    <i class="fas fa-arrow-down mr-1"></i> 碎片區 <i class="fas fa-arrow-down ml-1"></i>
+                    <i class="fas fa-arrow-down mr-1"></i> <span data-i18n="pieces">碎片區</span> <i class="fas fa-arrow-down ml-1"></i>
                 </div>
                 <div id="pool" class="flex flex-wrap gap-4 justify-center content-start pt-2"></div>
             </div>
@@ -443,14 +480,13 @@
 
     <!-- 頁尾 -->
     <footer class="w-full text-center py-6 text-slate-400 font-medium text-sm border-t border-slate-200 mt-auto bg-white/50 backdrop-blur-sm">
-        <p class="mb-1 text-slate-500">學華語向前走第二冊</p>
-        <p>Design by Sophia</p>
+        <p class="mb-1 text-slate-500 font-bold" data-i18n="footer">Powered by Gemini | Sophia老師的AI練習本</p>
     </footer>
     
     <div id="toast"><i class="fas fa-info-circle mr-2"></i><span>訊息</span></div>
     <div id="printable-cards" class="hidden"></div>
 
-    <!-- Firebase Script (獨立區塊) -->
+    <!-- Firebase Script -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
@@ -471,9 +507,7 @@
                 appId = appIdStr;
                 isFirebaseReady = true;
             }
-        } catch (e) {
-            console.warn("Firebase Init Error:", e);
-        }
+        } catch (e) { console.warn("Firebase Init Error:", e); }
 
         window.joinGameFirebase = async function(playerName) {
             if (!isFirebaseReady) return;
@@ -495,13 +529,12 @@
                 onSnapshot(colRef, (snapshot) => {
                     const players = [];
                     const now = Date.now();
-                    const ONE_HOUR = 3600000;
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        if (data.name && (now - data.loginTime < ONE_HOUR)) players.push(data);
+                        if (data.name && (now - data.loginTime < 3600000)) players.push(data);
                     });
                     if (window.updateOnlinePlayersUI) window.updateOnlinePlayersUI(players);
-                });
+                }, (error) => console.error("Firebase error:", error));
             } catch (e) { console.error(e); }
         };
 
@@ -514,13 +547,131 @@
         };
     </script>
 
-    <!-- Game Logic Script (標準區塊，保證變數可存取) -->
+    <!-- Game Logic Script -->
     <script>
+        // 翻譯字典
+        const translations = {
+            'zh-TW': {
+                title: '魔法漢字拼圖',
+                subtitle: '動動小手，把生字拼回來！',
+                askName: '請問你的名字是？',
+                inputName: '請輸入名字',
+                startBtn: '開始挑戰',
+                editName: '修改名字',
+                inputNewName: '輸入新名字',
+                cancel: '取消',
+                confirm: '確定修改',
+                online: '線上同學',
+                custom: '-- 自訂題目 --',
+                newPuzzle: '重新出題',
+                pieces: '碎片區',
+                footer: 'Powered by Gemini | Sophia老師的AI練習本',
+                linkCopied: '課程連結已複製！',
+                copyLinkTitle: '複製課程連結',
+                editNameTitle: '點擊修改名字',
+                ttsTitle: '朗讀發音',
+                bgmTitle: '遊戲音效',
+                success: '挑戰成功！',
+                greatJob: '太棒了，',
+                totalTime: '總耗時：',
+                printCards: '領取生字卡',
+                connecting: '連線中...',
+                justOnline: '剛上線',
+                lessonPrefix: '第 ',
+                lessonSuffix: ' 課',
+                remain: '剩',
+                words: '字',
+                nextBatch: '準備下一組...',
+                editPuzzle: '編輯自訂題目',
+                customPuzzlePrompt: '請輸入你想練習的漢字：',
+                save: '儲存並開始',
+                fullscreenTitle: '全螢幕',
+                inputEmpty: '請輸入至少一個字！'
+            },
+            'zh-CN': {
+                title: '魔法汉字拼图',
+                subtitle: '动动小手，把生字拼回来！',
+                askName: '请问你的名字是？',
+                inputName: '请输入名字',
+                startBtn: '开始挑战',
+                editName: '修改名字',
+                inputNewName: '输入新名字',
+                cancel: '取消',
+                confirm: '确定修改',
+                online: '线上同学',
+                custom: '-- 自订题目 --',
+                newPuzzle: '重新出题',
+                pieces: '碎片区',
+                footer: 'Powered by Gemini | Sophia老师的AI练习本',
+                linkCopied: '课程链接已复制！',
+                copyLinkTitle: '复制课程链接',
+                editNameTitle: '点击修改名字',
+                ttsTitle: '朗读发音',
+                bgmTitle: '游戏音效',
+                success: '挑战成功！',
+                greatJob: '太棒了，',
+                totalTime: '总耗时：',
+                printCards: '领取生字卡',
+                connecting: '连线中...',
+                justOnline: '刚上线',
+                lessonPrefix: '第 ',
+                lessonSuffix: ' 课',
+                remain: '剩',
+                words: '字',
+                nextBatch: '准备下一组...',
+                editPuzzle: '编辑自订题目',
+                customPuzzlePrompt: '请输入你想练习的汉字：',
+                save: '保存并开始',
+                fullscreenTitle: '全屏幕',
+                inputEmpty: '请输入至少一个字！'
+            },
+            'en': {
+                title: 'Magic Hanzi Puzzle',
+                subtitle: 'Piece the characters back together!',
+                askName: 'What is your name?',
+                inputName: 'Enter your name',
+                startBtn: 'Start Challenge',
+                editName: 'Edit Name',
+                inputNewName: 'Enter new name',
+                cancel: 'Cancel',
+                confirm: 'Confirm',
+                online: 'Online Classmates',
+                custom: '-- Custom --',
+                newPuzzle: 'New Puzzle',
+                pieces: 'Pieces',
+                footer: 'Powered by Gemini | Sophia\'s AI Workbook',
+                linkCopied: 'Lesson link copied!',
+                copyLinkTitle: 'Copy Lesson Link',
+                editNameTitle: 'Click to edit name',
+                ttsTitle: 'Read Aloud',
+                bgmTitle: 'Game Sound',
+                success: 'Challenge Cleared!',
+                greatJob: 'Great job, ',
+                totalTime: 'Total Time: ',
+                printCards: 'Get Flashcards',
+                connecting: 'Connecting...',
+                justOnline: 'Just online',
+                lessonPrefix: 'Lesson ',
+                lessonSuffix: '',
+                remain: 'Left:',
+                words: 'chars',
+                nextBatch: 'Next batch...',
+                editPuzzle: 'Edit Custom Puzzle',
+                customPuzzlePrompt: 'Enter Chinese characters to practice:',
+                save: 'Save & Start',
+                fullscreenTitle: 'Fullscreen',
+                inputEmpty: 'Please enter at least one character!'
+            }
+        };
+
+        let currentLang = 'zh-TW';
+        function t(key) { return translations[currentLang][key] || key; }
+
         // 資料庫與變數宣告
         const charDatabase = {
             "新": { zh: "ㄒㄧㄣ", py: "xīn", rad: "斤", str: 13, en: "new", words: ["新年", "新衣"] },
             "同": { zh: "ㄊㄨㄥˊ", py: "tóng", rad: "口", str: 6, en: "same / together", words: ["同學", "同意"] },
-            "學": { zh: "ㄒㄩㄝˊ", py: "xué", rad: "子", str: 16, en: "learn / study", words: ["學生", "學校"] },
+            "學": { zh: "ㄒㄩㄝˊ", py: "xué", rad: "子", str: 16, en: "learn / study", words: ["學生", "學校"], sim: "学" },
             "自": { zh: "ㄗˋ", py: "zì", rad: "自", str: 6, en: "self", words: ["自己", "自由"] },
             "己": { zh: "ㄐㄧˇ", py: "jǐ", rad: "己", str: 3, en: "self", words: ["自己", "知己"] },
             "年": { zh: "ㄋㄧㄢˊ", py: "nián", rad: "干", str: 6, en: "year", words: ["過年", "年級"] },
@@ -533,41 +684,41 @@
             "工": { zh: "ㄍㄨㄥ", py: "gōng", rad: "工", str: 3, en: "work", words: ["工作", "工人"] },
             "作": { zh: "ㄗㄨㄛˋ", py: "zuò", rad: "人", str: 7, en: "do / make", words: ["作業", "動作"] },
             "班": { zh: "ㄅㄢ", py: "bān", rad: "玉", str: 10, en: "class / work shift", words: ["班級", "上班"] },
-            "後": { zh: "ㄏㄡˋ", py: "hòu", rad: "彳", str: 9, en: "back / after", words: ["後面", "以後"] },
+            "後": { zh: "ㄏㄡˋ", py: "hòu", rad: "彳", str: 9, en: "back / after", words: ["後面", "以後"], sim: "后" },
             "去": { zh: "ㄑㄩˋ", py: "qù", rad: "厶", str: 5, en: "go", words: ["去年", "下去"] },
             "近": { zh: "ㄐㄧㄣˋ", py: "jìn", rad: "辵", str: 8, en: "near", words: ["最近", "靠近"] },
-            "買": { zh: "ㄇㄞˇ", py: "mǎi", rad: "貝", str: 12, en: "buy", words: ["買菜", "購買"] },
-            "東": { zh: "ㄉㄨㄥ", py: "dōng", rad: "木", str: 8, en: "east", words: ["東西", "東方"] },
+            "買": { zh: "ㄇㄞˇ", py: "mǎi", rad: "貝", str: 12, en: "buy", words: ["買菜", "購買"], sim: "买" },
+            "東": { zh: "ㄉㄨㄥ", py: "dōng", rad: "木", str: 8, en: "east", words: ["東西", "東方"], sim: "东" },
             "西": { zh: "ㄒㄧ", py: "xī", rad: "覀", str: 6, en: "west", words: ["西瓜", "西方"] },
-            "魚": { zh: "ㄩˊ", py: "yú", rad: "魚", str: 11, en: "fish", words: ["釣魚", "金魚"] },
-            "還": { zh: "ㄏㄞˊ", py: "hái", rad: "辵", str: 17, en: "still / also", words: ["還有", "還好"], poly: [{zh: "ㄏㄨㄢˊ", py: "huán"}] },
+            "魚": { zh: "ㄩˊ", py: "yú", rad: "魚", str: 11, en: "fish", words: ["釣魚", "金魚"], sim: "鱼" },
+            "還": { zh: "ㄏㄞˊ", py: "hái", rad: "辵", str: 17, en: "still / also", words: ["還有", "還好"], poly: [{zh: "ㄏㄨㄢˊ", py: "huán"}], sim: "还" },
             "可": { zh: "ㄎㄜˇ", py: "kě", rad: "口", str: 5, en: "can / able", words: ["可以", "可愛"] },
             "出": { zh: "ㄔㄨ", py: "chū", rad: "凵", str: 5, en: "out", words: ["出去", "出現"] },
             "先": { zh: "ㄒㄧㄢ", py: "xiān", rad: "儿", str: 6, en: "first", words: ["先生", "首先"] },
-            "週": { zh: "ㄓㄡ", py: "zhōu", rad: "辵", str: 12, en: "week", words: ["週末", "週記"] },
+            "週": { zh: "ㄓㄡ", py: "zhōu", rad: "辵", str: 12, en: "week", words: ["週末", "週記"], sim: "周" },
             "末": { zh: "ㄇㄛˋ", py: "mò", rad: "木", str: 5, en: "end", words: ["期末", "年末"] },
             "晚": { zh: "ㄨㄢˇ", py: "wǎn", rad: "日", str: 11, en: "late / night", words: ["晚上", "晚安"] },
             "蛋": { zh: "ㄉㄢˋ", py: "dàn", rad: "虫", str: 11, en: "egg", words: ["雞蛋", "蛋糕"] },
-            "飯": { zh: "ㄈㄢˋ", py: "fàn", rad: "食", str: 12, en: "rice / meal", words: ["吃飯", "米飯"] },
-            "現": { zh: "ㄒㄧㄢˋ", py: "xiàn", rad: "玉", str: 11, en: "now", words: ["現在", "發現"] },
-            "點": { zh: "ㄉㄧㄢˇ", py: "diǎn", rad: "黑", str: 17, en: "o'clock / dot", words: ["點心", "一點"] },
-            "黃": { zh: "ㄏㄨㄤˊ", py: "huáng", rad: "黃", str: 12, en: "yellow", words: ["黃色", "金黃"] },
-            "綠": { zh: "ㄌㄩˋ", py: "lǜ", rad: "糸", str: 14, en: "green", words: ["綠色", "綠茶"] },
+            "飯": { zh: "ㄈㄢˋ", py: "fàn", rad: "食", str: 12, en: "rice / meal", words: ["吃飯", "米飯"], sim: "饭" },
+            "現": { zh: "ㄒㄧㄢˋ", py: "xiàn", rad: "玉", str: 11, en: "now", words: ["現在", "發現"], sim: "现" },
+            "點": { zh: "ㄉㄧㄢˇ", py: "diǎn", rad: "黑", str: 17, en: "o'clock / dot", words: ["點心", "一點"], sim: "点" },
+            "黃": { zh: "ㄏㄨㄤˊ", py: "huáng", rad: "黃", str: 12, en: "yellow", words: ["黃色", "金黃"], sim: "黄" },
+            "綠": { zh: "ㄌㄩˋ", py: "lǜ", rad: "糸", str: 14, en: "green", words: ["綠色", "綠茶"], sim: "绿" },
             "色": { zh: "ㄙㄜˋ", py: "sè", rad: "色", str: 6, en: "color", words: ["紅色", "彩色"] },
-            "時": { zh: "ㄕˊ", py: "shí", rad: "日", str: 10, en: "time", words: ["時間", "小時"] },
+            "時": { zh: "ㄕˊ", py: "shí", rad: "日", str: 10, en: "time", words: ["時間", "小時"], sim: "时" },
             "候": { zh: "ㄏㄡˋ", py: "hòu", rad: "人", str: 10, en: "wait / time", words: ["時候", "等候"] },
             "花": { zh: "ㄏㄨㄚ", py: "huā", rad: "艸", str: 8, en: "flower", words: ["花朵", "開花"] },
             "子": { zh: "˙ㄗ", py: "zi", rad: "子", str: 3, en: "child / suffix", words: ["兒子", "椅子"] },
-            "紅": { zh: "ㄏㄨㄥˊ", py: "hóng", rad: "糸", str: 9, en: "red", words: ["紅包", "紅豆"] },
+            "紅": { zh: "ㄏㄨㄥˊ", py: "hóng", rad: "糸", str: 9, en: "red", words: ["紅包", "紅豆"], sim: "红" },
             "白": { zh: "ㄅㄞˊ", py: "bái", rad: "白", str: 5, en: "white", words: ["白色", "白天"] },
-            "華": { zh: "ㄏㄨㄚˊ", py: "huá", rad: "艸", str: 12, en: "magnificent / China", words: ["中華", "華人"] },
-            "說": { zh: "ㄕㄨㄛ", py: "shuō", rad: "言", str: 14, en: "speak", words: ["說話", "說明"] },
-            "對": { zh: "ㄉㄨㄟˋ", py: "duì", rad: "寸", str: 14, en: "correct / towards", words: ["對不起", "不對"] },
+            "華": { zh: "ㄏㄨㄚˊ", py: "huá", rad: "艸", str: 12, en: "magnificent / China", words: ["中華", "華人"], sim: "华" },
+            "說": { zh: "ㄕㄨㄛ", py: "shuō", rad: "言", str: 14, en: "speak", words: ["說話", "說明"], sim: "说" },
+            "對": { zh: "ㄉㄨㄟˋ", py: "duì", rad: "寸", str: 14, en: "correct / towards", words: ["對不起", "不對"], sim: "对" },
             "星": { zh: "ㄒㄧㄥ", py: "xīng", rad: "日", str: 9, en: "star", words: ["星星", "星期"] },
             "期": { zh: "ㄑㄧˊ", py: "qí", rad: "月", str: 12, en: "period of time", words: ["日期", "學期"] },
-            "會": { zh: "ㄏㄨㄟˋ", py: "huì", rad: "曰", str: 13, en: "can / meet", words: ["開會", "不會"] },
+            "會": { zh: "ㄏㄨㄟˋ", py: "huì", rad: "曰", str: 13, en: "can / meet", words: ["開會", "不會"], sim: "会" },
             "每": { zh: "ㄇㄟˇ", py: "měi", rad: "毋", str: 7, en: "every", words: ["每天", "每年"] },
-            "給": { zh: "ㄍㄟˇ", py: "gěi", rad: "糸", str: 12, en: "give", words: ["送給", "交給"] },
+            "給": { zh: "ㄍㄟˇ", py: "gěi", rad: "糸", str: 12, en: "give", words: ["送給", "交給"], sim: "给" },
             "如": { zh: "ㄖㄨˊ", py: "rú", rad: "女", str: 6, en: "if / like", words: ["如果", "比如"] },
             "果": { zh: "ㄍㄨㄛˇ", py: "guǒ", rad: "木", str: 8, en: "fruit / result", words: ["水果", "蘋果"] },
             "起": { zh: "ㄑㄧˇ", py: "qǐ", rad: "走", str: 10, en: "rise / start", words: ["起床", "起來"] },
@@ -575,77 +726,68 @@
             "早": { zh: "ㄗㄠˇ", py: "zǎo", rad: "日", str: 6, en: "early / morning", words: ["早上", "早安"] },
             "洗": { zh: "ㄒㄧˇ", py: "xǐ", rad: "水", str: 9, en: "wash", words: ["洗手", "洗澡"] },
             "昨": { zh: "ㄗㄨㄛˊ", py: "zuó", rad: "日", str: 9, en: "yesterday", words: ["昨天", "昨日"] },
-            "過": { zh: "ㄍㄨㄛˋ", py: "guò", rad: "辵", str: 13, en: "pass / cross", words: ["過去", "難過"] },
-            "別": { zh: "ㄅㄧㄝˊ", py: "bié", rad: "刀", str: 7, en: "don't / separate", words: ["別人", "告別"] },
+            "過": { zh: "ㄍㄨㄛˋ", py: "guò", rad: "辵", str: 13, en: "pass / cross", words: ["過去", "難過"], sim: "过" },
+            "別": { zh: "ㄅㄧㄝˊ", py: "bié", rad: "刀", str: 7, en: "don't / separate", words: ["別人", "告別"], sim: "别" },
             "忘": { zh: "ㄨㄤˋ", py: "wàng", rad: "心", str: 7, en: "forget", words: ["忘記", "難忘"] },
             "用": { zh: "ㄩㄥˋ", py: "yòng", rad: "用", str: 5, en: "use", words: ["用心", "不用"] },
-            "臉": { zh: "ㄌㄧㄢˇ", py: "liǎn", rad: "肉", str: 17, en: "face", words: ["洗臉", "笑臉"] },
+            "臉": { zh: "ㄌㄧㄢˇ", py: "liǎn", rad: "肉", str: 17, en: "face", words: ["洗臉", "笑臉"], sim: "脸" },
             "送": { zh: "ㄙㄨㄥˋ", py: "sòng", rad: "辵", str: 10, en: "send / give", words: ["送禮", "歡送"] },
-            "隻": { zh: "ㄓ", py: "zhī", rad: "隹", str: 10, en: "measure word", words: ["一隻", "船隻"] },
+            "隻": { zh: "ㄓ", py: "zhī", rad: "隹", str: 10, en: "measure word", words: ["一隻", "船隻"], sim: "只" },
             "狗": { zh: "ㄍㄡˇ", py: "gǒu", rad: "犬", str: 8, en: "dog", words: ["小狗", "熱狗"] },
-            "帶": { zh: "ㄉㄞˋ", py: "dài", rad: "巾", str: 11, en: "bring / belt", words: ["帶路", "皮帶"] },
+            "帶": { zh: "ㄉㄞˋ", py: "dài", rad: "巾", str: 11, en: "bring / belt", words: ["帶路", "皮帶"], sim: "带" },
             "散": { zh: "ㄙㄢˋ", py: "sàn", rad: "攴", str: 12, en: "scatter / loose", words: ["散步", "分散"] },
             "步": { zh: "ㄅㄨˋ", py: "bù", rad: "止", str: 7, en: "step", words: ["跑步", "進步"] },
-            "貓": { zh: "ㄇㄠ", py: "māo", rad: "豸", str: 16, en: "cat", words: ["貓咪", "熊貓"] },
+            "貓": { zh: "ㄇㄠ", py: "māo", rad: "豸", str: 16, en: "cat", words: ["貓咪", "熊貓"], sim: "猫" },
             "非": { zh: "ㄈㄟ", py: "fēi", rad: "非", str: 8, en: "not / wrong", words: ["非常", "是非"] },
-            "愛": { zh: "ㄞˋ", py: "ài", rad: "心", str: 13, en: "love", words: ["愛心", "可愛"] },
+            "愛": { zh: "ㄞˋ", py: "ài", rad: "心", str: 13, en: "love", words: ["愛心", "可愛"], sim: "爱" },
             "南": { zh: "ㄋㄢˊ", py: "nán", rad: "十", str: 9, en: "south", words: ["南方", "南邊"] },
             "北": { zh: "ㄅㄟˇ", py: "běi", rad: "匕", str: 5, en: "north", words: ["北方", "台北"] },
             "方": { zh: "ㄈㄤ", py: "fāng", rad: "方", str: 4, en: "square / direction", words: ["地方", "方便"] },
-            "裡": { zh: "ㄌㄧˇ", py: "lǐ", rad: "衣", str: 13, en: "inside", words: ["裡面", "這裡"] },
+            "裡": { zh: "ㄌㄧˇ", py: "lǐ", rad: "衣", str: 13, en: "inside", words: ["裡面", "這裡"], sim: "里" },
             "校": { zh: "ㄒㄧㄠˋ", py: "xiào", rad: "木", str: 10, en: "school", words: ["學校", "校長"] },
-            "門": { zh: "ㄇㄣˊ", py: "mén", rad: "門", str: 8, en: "door", words: ["大門", "開門"] },
+            "門": { zh: "ㄇㄣˊ", py: "mén", rad: "門", str: 8, en: "door", words: ["大門", "開門"], sim: "门" },
             "口": { zh: "ㄎㄡˇ", py: "kǒu", rad: "口", str: 3, en: "mouth", words: ["門口", "入口"] },
             "因": { zh: "ㄧㄣ", py: "yīn", rad: "囗", str: 6, en: "cause / because", words: ["因為", "原因"] },
-            "為": { zh: "ㄨㄟˋ", py: "wèi", rad: "爪", str: 9, en: "for / be", words: ["因為", "為了"] },
+            "為": { zh: "ㄨㄟˋ", py: "wèi", rad: "爪", str: 9, en: "for / be", words: ["因為", "為了"], sim: "为" },
             "所": { zh: "ㄙㄨㄛˇ", py: "suǒ", rad: "戶", str: 8, en: "place", words: ["所以", "廁所"] },
             "本": { zh: "ㄅㄣˇ", py: "běn", rad: "木", str: 5, en: "root / book", words: ["書本", "本來"] },
-            "住": { zh: "˙ㄓㄨˋ", py: "zhù", rad: "人", str: 7, en: "live in/at", words: ["住在", "住家"] },
+            "著": { zh: "˙ㄓㄜ", py: "zhe", rad: "艸", str: 12, en: "particle / aspect", words: ["看著", "聽著"], poly: [{zh: "ㄓㄨㄛˊ", py: "zhuó"}], sim: "着" },
             "退": { zh: "ㄊㄨㄟˋ", py: "tuì", rad: "辵", str: 10, en: "retreat / return", words: ["退休", "後退"] },
             "休": { zh: "ㄒㄧㄡ", py: "xiū", rad: "人", str: 6, en: "rest", words: ["休息", "午休"] },
             "次": { zh: "ㄘˋ", py: "cì", rad: "欠", str: 6, en: "time / order", words: ["這次", "下次"] },
             "旅": { zh: "ㄌㄩˇ", py: "lǚ", rad: "方", str: 10, en: "travel", words: ["旅行", "旅遊"] },
             "行": { zh: "ㄒㄧㄥˊ", py: "xíng", rad: "行", str: 6, en: "walk / go", words: ["行李", "行人"], poly: [{zh: "ㄏㄤˊ", py: "háng"}] },
             "法": { zh: "ㄈㄚˇ", py: "fǎ", rad: "水", str: 8, en: "law / method", words: ["法國", "辦法"] },
-            "國": { zh: "ㄍㄨㄛˊ", py: "guó", rad: "囗", str: 11, en: "country", words: ["國家", "國王"] },
-            "動": { zh: "ㄉㄨㄥˋ", py: "dòng", rad: "力", str: 11, en: "move", words: ["動物", "運動"] },
+            "國": { zh: "ㄍㄨㄛˊ", py: "guó", rad: "囗", str: 11, en: "country", words: ["國家", "國王"], sim: "国" },
+            "動": { zh: "ㄉㄨㄥˋ", py: "dòng", rad: "力", str: 11, en: "move", words: ["動物", "運動"], sim: "动" },
             "物": { zh: "ㄨˋ", py: "wù", rad: "牛", str: 8, en: "thing / object", words: ["生物", "禮物"] },
-            "園": { zh: "ㄩㄢˊ", py: "yuán", rad: "囗", str: 13, en: "garden / park", words: ["公園", "花園"] },
+            "園": { zh: "ㄩㄢˊ", py: "yuán", rad: "囗", str: 13, en: "garden / park", words: ["公園", "花園"], sim: "园" },
             "老": { zh: "ㄌㄠˇ", py: "lǎo", rad: "老", str: 6, en: "old", words: ["老師", "老人"] },
             "希": { zh: "ㄒㄧ", py: "xī", rad: "巾", str: 7, en: "hope", words: ["希望", "希臘"] },
             "望": { zh: "ㄨㄤˋ", py: "wàng", rad: "月", str: 11, en: "look / hope", words: ["願望", "看望"] },
             "但": { zh: "ㄉㄢˋ", py: "dàn", rad: "人", str: 7, en: "but", words: ["但是", "不但"] },
             "胖": { zh: "ㄆㄤˋ", py: "pàng", rad: "肉", str: 9, en: "fat", words: ["胖子", "肥胖"] },
             "真": { zh: "ㄓㄣ", py: "zhēn", rad: "目", str: 10, en: "real / true", words: ["真的", "真心"] },
-            "長": { zh: "ㄔㄤˊ", py: "cháng", rad: "長", str: 8, en: "long / grow", words: ["很長", "長度"], poly: [{zh: "ㄓㄤˇ", py: "zhǎng"}] },
+            "長": { zh: "ㄔㄤˊ", py: "cháng", rad: "長", str: 8, en: "long / grow", words: ["很長", "長度"], poly: [{zh: "ㄓㄤˇ", py: "zhǎng"}], sim: "长" },
             "久": { zh: "ㄐㄧㄡˇ", py: "jiǔ", rad: "丿", str: 3, en: "long time", words: ["好久", "多久"] },
-            "話": { zh: "ㄏㄨㄚˋ", py: "huà", rad: "言", str: 13, en: "word / speech", words: ["說話", "電話"] },
+            "話": { zh: "ㄏㄨㄚˋ", py: "huà", rad: "言", str: 13, en: "word / speech", words: ["說話", "電話"], sim: "话" },
             "高": { zh: "ㄍㄠ", py: "gāo", rad: "高", str: 10, en: "high / tall", words: ["高興", "蛋糕"] },
-            "課": { zh: "ㄎㄜˋ", py: "kè", rad: "言", str: 15, en: "lesson / class", words: ["上課", "課本"] },
-            "寫": { zh: "ㄒㄧㄝˇ", py: "xiě", rad: "宀", str: 15, en: "write", words: ["寫字", "寫信"] },
-            "沒": { zh: "ㄇㄟˊ", py: "méi", rad: "水", str: 7, en: "have not", words: ["沒有", "沒空"], poly: [{zh: "ㄇㄛˋ", py: "mò"}] },
-            "題": { zh: "ㄊㄧˊ", py: "tí", rad: "頁", str: 18, en: "topic / problem", words: ["問題", "題目"] },
+            "課": { zh: "ㄎㄜˋ", py: "kè", rad: "言", str: 15, en: "lesson / class", words: ["上課", "課本"], sim: "课" },
+            "寫": { zh: "ㄒㄧㄝˇ", py: "xiě", rad: "宀", str: 15, en: "write", words: ["寫字", "寫信"], sim: "写" },
+            "沒": { zh: "ㄇㄟˊ", py: "méi", rad: "水", str: 7, en: "have not", words: ["沒有", "沒空"], poly: [{zh: "ㄇㄛˋ", py: "mò"}], sim: "没" },
+            "題": { zh: "ㄊㄧˊ", py: "tí", rad: "頁", str: 18, en: "topic / problem", words: ["問題", "題目"], sim: "题" },
             "定": { zh: "ㄉㄧㄥˋ", py: "dìng", rad: "宀", str: 8, en: "decide / fix", words: ["決定", "一定"] },
             "意": { zh: "ㄧˋ", py: "yì", rad: "心", str: 13, en: "meaning / idea", words: ["意思", "願意"] },
             "思": { zh: "ㄙ", py: "sī", rad: "心", str: 9, en: "think", words: ["思考", "意思"] },
-            "讀": { zh: "ㄉㄨˊ", py: "dú", rad: "言", str: 22, en: "read", words: ["讀書", "閱讀"] },
-            "書": { zh: "ㄕㄨ", py: "shū", rad: "曰", str: 10, en: "book", words: ["看書", "書包"] },
-            "樂": { zh: "ㄌㄜˋ", py: "lè", rad: "木", str: 15, en: "happy", words: ["快樂", "音樂"], poly: [{zh: "ㄩㄝˋ", py: "yuè"}] }
+            "讀": { zh: "ㄉㄨˊ", py: "dú", rad: "言", str: 22, en: "read", words: ["讀書", "閱讀"], sim: "读" },
+            "書": { zh: "ㄕㄨ", py: "shū", rad: "曰", str: 10, en: "book", words: ["看書", "書包"], sim: "书" },
+            "樂": { zh: "ㄌㄜˋ", py: "lè", rad: "木", str: 15, en: "happy", words: ["快樂", "音樂"], poly: [{zh: "ㄩㄝˋ", py: "yuè"}], sim: "乐" }
         };
 
         const lessons = {
-            1: "新同學自己年跟比",
-            2: "外公以前工作班後",
-            3: "去近買東西魚還可",
-            4: "出先週末晚蛋飯現點",
-            5: "黃綠色時候花子紅白",
-            6: "華說對星期會每給如果",
-            7: "起累早洗昨過別忘用臉",
-            8: "送隻狗帶散步貓非愛",
-            9: "南北方裡校門口因為所",
-            10: "本著退休次旅行法國",
-            11: "動物園老希望但胖真長",
-            12: "久話高課寫沒題定意思"
+            1: "新同學自己年跟比", 2: "外公以前工作班後", 3: "去近買東西魚還可", 4: "出先週末晚蛋飯現點",
+            5: "黃綠色時候花子紅白", 6: "華說對星期會每給如果", 7: "起累早洗昨過別忘用臉", 8: "送隻狗帶散步貓非愛",
+            9: "南北方裡校門口因為所", 10: "本著退休次旅行法國", 11: "動物園老希望但胖真長", 12: "久話高課寫沒題定意思"
         };
 
         const SoundManager = {
@@ -680,30 +822,67 @@
             if (isMuted) {
                 btn.classList.replace('bg-slate-400', 'bg-red-400');
                 btn.classList.replace('hover:bg-slate-500', 'hover:bg-red-500');
-                icon.className = 'fas fa-volume-mute';
+                icon.className = 'fas fa-volume-xmark';
             } else {
                 btn.classList.replace('bg-red-400', 'bg-slate-400');
                 btn.classList.replace('hover:bg-red-500', 'hover:bg-slate-500');
-                icon.className = 'fas fa-volume-high';
+                icon.className = 'fas fa-music';
             }
         }
 
-        const inputEl = document.getElementById('inputChars');
+        // --- 全螢幕 API ---
+        function toggleFullscreen() {
+            const doc = window.document;
+            const docEl = doc.documentElement;
+
+            const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+            const cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+            if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+                requestFullScreen.call(docEl).catch(err => console.log(err));
+            } else {
+                cancelFullScreen.call(doc);
+            }
+        }
+
+        // 監聽全螢幕狀態以切換圖示
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+
+        function updateFullscreenIcon() {
+            const btn = document.getElementById('fullscreenBtn');
+            const icon = btn.querySelector('i');
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                icon.className = 'fas fa-compress';
+            } else {
+                icon.className = 'fas fa-expand';
+            }
+        }
+
         const lessonSelect = document.getElementById('lessonSelect');
         const poolEl = document.getElementById('pool');
         const targetsEl = document.getElementById('targets');
         const successMsg = document.getElementById('successMessage');
         const timerEl = document.getElementById('timer');
-        const nextBtn = document.getElementById('nextBtn');
+        const nextBtnText = document.getElementById('nextBtnText');
         const toast = document.getElementById('toast');
         const printableCards = document.getElementById('printable-cards');
         const displayPlayerName = document.getElementById('displayPlayerName');
         const playerNameInput = document.getElementById('playerNameInput');
         const startScreen = document.getElementById('startScreen');
+        
+        // 姓名 Modal
         const editNameModal = document.getElementById('editNameModal');
         const editNameInput = document.getElementById('editNameInput');
         const modalContent = document.getElementById('modalContent');
         
+        // 自訂題目 Modal
+        const customPuzzleModal = document.getElementById('customPuzzleModal');
+        const customPuzzleModalContent = document.getElementById('customPuzzleModalContent');
+        const customPuzzleInput = document.getElementById('customPuzzleInput');
+
         let pieces = [];
         let selectedPiece = null;
         let draggedPiece = null;
@@ -712,29 +891,133 @@
         let remainingChars = [];
         let playerName = "小小探險家";
         let preferredVoice = null;
+        let customLessonText = "讀書樂"; // 預設的自訂題目
+
+        // --- 語言與字體切換 ---
+        function changeLanguage() {
+            currentLang = document.getElementById('langSwitcher').value;
+            applyTranslations();
+            if (startScreen.style.display === 'none') {
+                initGame();
+            }
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) el.innerHTML = translations[currentLang][key];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (translations[currentLang][key]) el.placeholder = translations[currentLang][key];
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (translations[currentLang][key]) el.title = translations[currentLang][key];
+            });
+            
+            const prevValue = lessonSelect.value;
+            initLessonSelect();
+            lessonSelect.value = prevValue;
+            
+            updateNextBtnText();
+        }
+
+        function updateNextBtnText() {
+            const selectedLesson = lessonSelect.value;
+            if (remainingChars.length > 0) {
+                nextBtnText.textContent = `${t('newPuzzle')} (${t('remain')} ${remainingChars.length} ${t('words')})`;
+            } else {
+                nextBtnText.textContent = t('newPuzzle');
+            }
+        }
+
+        function getDisplayChar(char) {
+            if (currentLang === 'zh-CN' && charDatabase[char] && charDatabase[char].sim) {
+                return charDatabase[char].sim;
+            }
+            return char;
+        }
 
         function initLessonSelect() {
+            lessonSelect.innerHTML = `<option value="">${t('custom')}</option>`;
             for (let i = 1; i <= 12; i++) {
                 const option = document.createElement('option');
                 option.value = i;
-                option.text = `第 ${i} 課`;
+                option.text = `${t('lessonPrefix')}${i}${t('lessonSuffix')}`;
                 lessonSelect.appendChild(option);
             }
         }
 
         function loadVoices() {
             const voices = window.speechSynthesis.getVoices();
-            preferredVoice = voices.find(v => v.lang === 'zh-TW' && v.name.includes('Google')) ||
-                             voices.find(v => v.lang === 'zh-TW') ||
-                             voices.find(v => v.name.includes('Taiwan'));
-            if (preferredVoice) console.log("Voice loaded:", preferredVoice.name);
+            preferredVoice = voices.find(v => v.lang === (currentLang === 'zh-CN' ? 'zh-CN' : 'zh-TW') && v.name.includes('Google')) ||
+                             voices.find(v => v.lang === (currentLang === 'zh-CN' ? 'zh-CN' : 'zh-TW')) ||
+                             voices.find(v => v.name.includes(currentLang === 'zh-CN' ? 'China' : 'Taiwan'));
         }
 
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = loadVoices;
         }
 
-        // --- 模態框操作 ---
+        // --- 課程連結複製功能 ---
+        function copyLessonLink() {
+            const lesson = document.getElementById('lessonSelect').value;
+            const url = new URL(window.location.href);
+            if (lesson) url.searchParams.set('lesson', lesson);
+            else url.searchParams.delete('lesson');
+
+            const textToCopy = url.href;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textToCopy).then(() => showToast(t('linkCopied'))).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+
+            function fallbackCopy() {
+                const input = document.createElement('input');
+                input.value = textToCopy;
+                document.body.appendChild(input);
+                input.select();
+                try { document.execCommand('copy'); showToast(t('linkCopied')); } catch(e){}
+                document.body.removeChild(input);
+            }
+        }
+
+        // --- 自訂題目 Modal 操作 ---
+        function openCustomPuzzleModal() {
+            customPuzzleInput.value = customLessonText;
+            customPuzzleModal.classList.add('opacity-100', 'pointer-events-auto');
+            customPuzzleModal.classList.remove('opacity-0', 'pointer-events-none');
+            customPuzzleModalContent.classList.remove('scale-95');
+            customPuzzleModalContent.classList.add('scale-100');
+            customPuzzleInput.focus();
+        }
+
+        function closeCustomPuzzleModal() {
+            customPuzzleModal.classList.remove('opacity-100', 'pointer-events-auto');
+            customPuzzleModal.classList.add('opacity-0', 'pointer-events-none');
+            customPuzzleModalContent.classList.add('scale-95');
+            customPuzzleModalContent.classList.remove('scale-100');
+        }
+
+        function saveCustomPuzzle() {
+            const inputVal = customPuzzleInput.value.replace(/\s+/g, '');
+            if (inputVal.length > 0) {
+                customLessonText = inputVal;
+                lessonSelect.value = ""; // 強制切換為自訂模式
+                closeCustomPuzzleModal();
+                handleLessonChange();
+            } else {
+                showToast(t('inputEmpty'));
+            }
+        }
+
+        customPuzzleModal.addEventListener('click', (e) => {
+            if (e.target === customPuzzleModal) closeCustomPuzzleModal();
+        });
+
+        // --- 修改姓名 Modal 操作 ---
         function openEditModal() {
             editNameInput.value = playerName;
             editNameModal.classList.add('show');
@@ -761,27 +1044,20 @@
             closeEditModal();
         }
 
-        // 點擊背景關閉
         editNameModal.addEventListener('click', (e) => {
             if (e.target === editNameModal) closeEditModal();
         });
 
-        // 遊戲流程
+        // --- 遊戲主流程 ---
         function startGame() {
             const name = playerNameInput.value.trim();
-            if (name) {
-                playerName = name;
-            }
+            if (name) playerName = name;
             displayPlayerName.textContent = playerName;
             
-            if (typeof window.joinGameFirebase === 'function') {
-                window.joinGameFirebase(playerName);
-            }
+            if (typeof window.joinGameFirebase === 'function') window.joinGameFirebase(playerName);
 
             startScreen.classList.add('fade-out');
-            setTimeout(() => {
-                startScreen.style.display = 'none';
-            }, 500);
+            setTimeout(() => { startScreen.style.display = 'none'; }, 500);
 
             initGame();
             loadVoices();
@@ -789,17 +1065,14 @@
 
         function handleLessonChange() {
             const selectedLesson = lessonSelect.value;
-            const inputEl = document.getElementById('inputChars');
-
+            let sourceText = "";
             if (selectedLesson && lessons[selectedLesson]) {
-                inputEl.classList.add('hidden');
-                remainingChars = lessons[selectedLesson].split('');
-                shuffleArray(remainingChars);
-                showToast(`已切換至第 ${selectedLesson} 課`);
+                sourceText = lessons[selectedLesson];
             } else {
-                inputEl.classList.remove('hidden');
-                remainingChars = [];
+                sourceText = customLessonText;
             }
+            remainingChars = sourceText.split('');
+            shuffleArray(remainingChars);
             initGame();
         }
 
@@ -809,48 +1082,27 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
-        function setDifficulty(mode) {
-            // 已簡化，保留介面相容性但不做任何事，預設為簡單模式
-        }
-
         function initGame(options = {}) {
             const { nextBatch = false } = options;
             SoundManager.init();
+            loadVoices();
 
             const selectedLesson = lessonSelect.value;
-            let text = "";
+            let sourceText = selectedLesson && lessons[selectedLesson] ? lessons[selectedLesson] : customLessonText;
 
-            if (selectedLesson && lessons[selectedLesson]) {
-                if (!nextBatch) {
-                    if (remainingChars.length === 0) {
-                        remainingChars = lessons[selectedLesson].split('');
-                        shuffleArray(remainingChars);
-                    }
-                    startTimer();
-                }
-                
-                if (remainingChars.length > 0) {
-                    const chunk = remainingChars.splice(0, 3);
-                    text = chunk.join('');
-                    inputEl.value = text;
-                } else {
-                    remainingChars = lessons[selectedLesson].split('');
-                    shuffleArray(remainingChars);
-                    text = remainingChars.splice(0, 3).join('');
-                    inputEl.value = text;
-                }
-                nextBtn.innerHTML = `<i class="fas fa-random"></i> <span>重新出題 (剩 ${remainingChars.length} 字)</span>`;
-            } else {
-                text = inputEl.value.trim();
-                if (text.length === 0) text = "讀書樂";
+            if (!nextBatch) {
+                remainingChars = sourceText.split('');
+                shuffleArray(remainingChars);
                 startTimer();
-                nextBtn.innerHTML = '<i class="fas fa-random"></i> <span>重新出題</span>';
+            } else if (remainingChars.length === 0) {
+                remainingChars = sourceText.split('');
+                shuffleArray(remainingChars);
             }
+            
+            const chunk = remainingChars.splice(0, 3);
+            let text = chunk.join('');
 
-            if (text.length > 3) {
-                text = text.substring(0, 3);
-                inputEl.value = text;
-            }
+            updateNextBtnText();
 
             poolEl.innerHTML = '';
             targetsEl.innerHTML = '';
@@ -891,24 +1143,18 @@
                         ${p.name.substring(0,1)}
                     </div>
                     <div class="text-sm font-bold text-gray-700 truncate max-w-[100px]">${p.name}</div>
-                    ${(Date.now() - p.loginTime < 10000) ? '<span class="text-xs text-green-600 font-bold bg-green-100 px-1 rounded">剛上線</span>' : ''}
+                    ${(Date.now() - p.loginTime < 10000) ? `<span class="text-xs text-green-600 font-bold bg-green-100 px-1 rounded">${t('justOnline')}</span>` : ''}
                 `;
                 listEl.appendChild(item);
             });
         }
         
-        // Expose update function for Firebase module to call
         window.updateOnlinePlayersUI = updateOnlinePlayersUI;
 
         // Print function
         function printCards() {
             const selectedLesson = lessonSelect.value;
-            let textToPrint = "";
-            if (selectedLesson && lessons[selectedLesson]) {
-                textToPrint = lessons[selectedLesson];
-            } else {
-                textToPrint = inputEl.value.trim();
-            }
+            let textToPrint = selectedLesson && lessons[selectedLesson] ? lessons[selectedLesson] : customLessonText;
             if (!textToPrint) return;
 
             printableCards.innerHTML = '';
@@ -931,12 +1177,14 @@
                     polyHtml = `<div class="print-poly">[破] ${data.poly.map(p => `${p.zh} ${p.py}`).join('、')}</div>`;
                 }
 
+                const displayC = getDisplayChar(char);
+
                 const card = document.createElement('div');
                 card.className = 'print-card';
                 card.innerHTML = `
                     <div class="print-py">${data.py}</div>
                     <div class="print-zh">${data.zh}</div>
-                    <div class="print-char">${char}</div>
+                    <div class="print-char">${displayC}</div>
                     <div class="print-meta">部首: ${data.rad} | 筆畫: ${data.str}</div>
                     <div class="print-en">${data.en}</div>
                     <div class="print-words">${data.words ? data.words.join('、') : ''}</div>
@@ -976,9 +1224,11 @@
             grid.id = `grid-${charIndex}`;
             grid.dataset.char = char;
 
+            const displayC = getDisplayChar(char);
+
             const hintDiv = document.createElement('div');
             hintDiv.className = 'grid-hint-text font-kai';
-            hintDiv.textContent = char;
+            hintDiv.textContent = displayC;
             grid.appendChild(hintDiv);
 
             for (let i = 0; i < 4; i++) {
@@ -1009,7 +1259,7 @@
                 }
 
                 infoCard.innerHTML = `
-                    <div class="text-2xl font-bold text-gray-800 font-kai mb-1">${char}</div>
+                    <div class="text-2xl font-bold text-gray-800 font-kai mb-1">${displayC}</div>
                     <div class="flex justify-center items-baseline gap-2 text-sm border-b border-gray-100 pb-2 mb-2">
                         <span class="text-red-500 font-bold font-mono text-base">${data.zh}</span>
                         <span class="text-gray-400 font-mono text-xs">${data.py}</span>
@@ -1040,9 +1290,11 @@
             piece.dataset.correctPos = pos;
             piece.id = `p-${charIndex}-${pos}`;
 
+            const displayC = getDisplayChar(char);
+
             const span = document.createElement('div');
             span.className = 'puzzle-text font-kai';
-            span.textContent = char;
+            span.textContent = displayC;
             piece.appendChild(span);
 
             piece.addEventListener('dragstart', handleDragStart);
@@ -1087,7 +1339,9 @@
 
         function handleZoneClick(e) {
             if (selectedPiece) {
-                placePiece(selectedPiece, this); selectedPiece.classList.remove('selected'); selectedPiece = null;
+                placePiece(selectedPiece, this); 
+                selectedPiece.classList.remove('selected'); 
+                selectedPiece = null;
             } else {
                 const pieceInside = Array.from(this.children).find(c => c.classList.contains('puzzle-piece'));
                 if (pieceInside) handlePieceClick.call(pieceInside, e);
@@ -1136,7 +1390,21 @@
                     if (!grid.classList.contains('completed-grid')) {
                         grid.classList.add('completed-grid');
                         SoundManager.playCorrect();
-                        setTimeout(() => speakText(grid.dataset.char), 200);
+                        
+                        const char = grid.dataset.char;
+                        const data = charDatabase[char];
+                        let textToRead = char;
+                        
+                        if (data) {
+                            const strokeWord = currentLang === 'zh-CN' ? '画' : '畫';
+                            textToRead += `。${data.rad}部，${data.str}${strokeWord}。`;
+                            
+                            if (data.words && data.words.length > 0) {
+                                textToRead += data.words.join("，");
+                            }
+                        }
+                        
+                        setTimeout(() => speakText(textToRead), 200);
                         if (infoCard) infoCard.classList.add('show');
                     }
                 } else {
@@ -1149,19 +1417,22 @@
 
             if (totalCorrect === totalPieces) {
                 const selectedLesson = lessonSelect.value;
-                if (selectedLesson && lessons[selectedLesson] && remainingChars.length > 0) {
+                if (remainingChars.length > 0) {
                     SoundManager.playCorrect();
-                    showToast(`太棒了！準備下一組... (還剩 ${remainingChars.length} 字)`);
+                    showToast(`${t('greatJob')}${t('nextBatch')}`);
                     setTimeout(() => initGame({ nextBatch: true }), 1500);
                 } else {
                     successMsg.innerHTML = `
                         <div class="bg-gradient-to-r from-green-400 to-emerald-500 text-white p-1 rounded-3xl shadow-2xl animate-bounce">
                             <div class="bg-white text-gray-800 px-10 py-6 rounded-2xl flex flex-col items-center gap-2 border-4 border-green-200">
-                                <div class="text-3xl font-extrabold text-green-600 mb-2">🎉 挑戰成功！ 🎉</div>
-                                <div class="text-xl font-bold text-gray-600">太棒了，<span class="text-blue-600 text-2xl">${playerName}</span>！</div>
-                                <div class="text-lg bg-yellow-100 px-4 py-1 rounded-full text-yellow-700 font-bold mt-2">
-                                    <i class="fas fa-stopwatch mr-1"></i> 總耗時：${updateTimerDisplay()}
+                                <div class="text-3xl font-extrabold text-green-600 mb-2">🎉 ${t('success')} 🎉</div>
+                                <div class="text-xl font-bold text-gray-600">${t('greatJob')} <span class="text-blue-600 text-2xl">${playerName}</span>！</div>
+                                <div class="text-lg bg-yellow-100 px-4 py-1 rounded-full text-yellow-700 font-bold mt-2 mb-4">
+                                    <i class="fas fa-stopwatch mr-1"></i> ${t('totalTime')} ${updateTimerDisplay()}
                                 </div>
+                                <button onclick="printCards()" aria-label="領取生字卡" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-2 text-xl">
+                                    <i class="fas fa-print"></i> ${t('printCards')}
+                                </button>
                             </div>
                         </div>
                     `;
@@ -1176,12 +1447,21 @@
         }
 
         function speakText(textToSpeak) {
-            const text = (typeof textToSpeak === 'string' && textToSpeak) ? textToSpeak : inputEl.value;
+            let text = '';
+            if (typeof textToSpeak === 'string' && textToSpeak) {
+                text = Array.from(textToSpeak).map(c => getDisplayChar(c)).join('');
+            } else {
+                const grids = document.querySelectorAll('.tian-grid');
+                let currentChars = [];
+                grids.forEach(g => currentChars.push(g.dataset.char));
+                text = currentChars.map(c => getDisplayChar(c)).join('');
+            }
+            
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 if (preferredVoice) utterance.voice = preferredVoice;
-                utterance.lang = 'zh-TW';
+                utterance.lang = currentLang === 'zh-CN' ? 'zh-CN' : 'zh-TW';
                 utterance.rate = 0.8;
                 window.speechSynthesis.speak(utterance);
             }
@@ -1202,7 +1482,17 @@
             }
         }
 
-        initLessonSelect();
+        // 初始化翻譯與解析網址 Lesson 參數
+        window.addEventListener('DOMContentLoaded', () => {
+            applyTranslations();
+            const urlParams = new URLSearchParams(window.location.search);
+            const l = urlParams.get('lesson');
+            if (l && lessons[l]) {
+                lessonSelect.value = l;
+                handleLessonChange();
+            }
+        });
+
     </script>
 </body>
 </html>
