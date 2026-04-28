@@ -184,6 +184,16 @@
         }
         .completed-grid::before, .completed-grid::after { opacity: 0; }
 
+        /* --- 背景拼圖動畫 --- */
+        @keyframes float-bg {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(25px, -35px) rotate(15deg); }
+            66% { transform: translate(-25px, 25px) rotate(-15deg); }
+        }
+        .bg-puzzle {
+            animation: float-bg 25s infinite ease-in-out;
+        }
+
         /* --- 資訊卡 --- */
         .char-info-card {
             margin-top: 12px;
@@ -273,7 +283,7 @@
         @media print {
             @page { margin: 0.5cm; size: portrait; }
             body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
-            #startScreen, header, .controls-container, .game-container, footer, #toast, #successMessage, #editNameModal, #customPuzzleModal, #topRightPanel { display: none !important; }
+            #startScreen, header, .controls-container, .game-container, footer, #toast, #successMessage, #editNameModal, #customPuzzleModal, #topRightPanel, #bg-puzzles { display: none !important; }
             #printable-cards { display: block !important; padding: 0; width: 100%; }
             
             #print-header {
@@ -306,6 +316,16 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-6 no-select text-gray-700 diff-normal">
+
+    <!-- 浮動背景拼圖 (修正圖層與透明度) -->
+    <div id="bg-puzzles" class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <i class="fas fa-puzzle-piece absolute text-[12rem] text-blue-400 opacity-10 top-[5%] left-[5%] bg-puzzle" style="animation-delay: 0s;"></i>
+        <i class="fas fa-puzzle-piece absolute text-[16rem] text-indigo-400 opacity-10 top-[30%] left-[80%] bg-puzzle" style="animation-delay: -5s; animation-duration: 25s;"></i>
+        <i class="fas fa-puzzle-piece absolute text-[10rem] text-cyan-500 opacity-10 top-[70%] left-[10%] bg-puzzle" style="animation-delay: -2s; animation-duration: 18s;"></i>
+        <i class="fas fa-puzzle-piece absolute text-[14rem] text-blue-500 opacity-10 top-[15%] left-[55%] bg-puzzle" style="animation-delay: -10s; animation-duration: 22s;"></i>
+        <i class="fas fa-puzzle-piece absolute text-[20rem] text-sky-400 opacity-10 top-[65%] left-[65%] bg-puzzle" style="animation-delay: -7s; animation-duration: 28s;"></i>
+        <i class="fas fa-puzzle-piece absolute text-[11rem] text-indigo-300 opacity-10 top-[45%] left-[25%] bg-puzzle" style="animation-delay: -12s; animation-duration: 15s;"></i>
+    </div>
 
     <!-- 右上方浮動面板 (語言切換) -->
     <div id="topRightPanel" class="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
@@ -453,7 +473,7 @@
     </div>
 
     <!-- 遊戲主體 -->
-    <div class="game-container flex flex-col gap-10 w-full max-w-6xl px-4 items-center mb-12 flex-grow">
+    <div class="game-container flex flex-col gap-10 w-full max-w-6xl px-4 items-center mb-12 flex-grow relative z-10">
         <!-- 1. 目標區 (田字格) -->
         <div class="w-full flex flex-col items-center min-h-[300px]">
             <div id="targets" class="flex flex-wrap gap-6 md:gap-10 justify-center items-start perspective-1000"></div>
